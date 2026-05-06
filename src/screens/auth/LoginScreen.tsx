@@ -5,10 +5,7 @@ import { Heading, Text, VStack } from '@gluestack-ui/themed';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { ActivityIndicator, Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { login } from '../../features/auth/authSlice';
-import { getApiBaseUrl } from '../../config/env';
-import { apiClient } from '../../services/api/client';
 import { useAppDispatch } from '../../store/hooks';
-import { getApiErrorMessage } from '../../utils/apiError';
 import { toastError, toastSuccess } from '../../utils/toast';
 import { RootStackParamList } from '../types';
 
@@ -23,37 +20,9 @@ export default function LoginScreen({ navigation }: Readonly<LoginScreenProps>) 
   const [password, setPassword] = useState(DEFAULT_PASSWORD);
   const [showPassword, setShowPassword] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [checkingApi, setCheckingApi] = useState(false);
-
-  const onTestApiConnection = async () => {
-    const apiBaseUrl = getApiBaseUrl();
-    console.log('[API Test] base URL:', apiBaseUrl);
-    setCheckingApi(true);
-    try {
-      try {
-        await apiClient.get('/health', { timeout: 6000 });
-        toastSuccess('API reachable', apiBaseUrl);
-        return;
-      } catch {
-        // Some backends do not expose /health; retry root to verify network path.
-      }
-
-      try {
-        await apiClient.get('/', { timeout: 6000 });
-        toastSuccess('API reachable', `${apiBaseUrl} (via /)`);
-      } catch (e) {
-        toastError('API not reachable', `${apiBaseUrl} - ${getApiErrorMessage(e, 'Network failure')}`);
-      }
-    } finally {
-      setCheckingApi(false);
-    }
-  };
 
   const onLogin = async () => {
     const usernameOrEmail = email.trim();
-    const apiBaseUrl = getApiBaseUrl();
-    console.log('[Login] API base URL:', apiBaseUrl);
-    toastSuccess('API Base URL', apiBaseUrl);
     if (!usernameOrEmail || !password) {
       toastError('Missing credentials', 'Enter username or email and password.');
       return;
@@ -131,21 +100,9 @@ export default function LoginScreen({ navigation }: Readonly<LoginScreenProps>) 
           </VStack>
 
           <Pressable
-            onPress={onTestApiConnection}
-            style={[styles.testApiButton, checkingApi && styles.loginButtonDisabled]}
-            disabled={busy || checkingApi}
-          >
-            {checkingApi ? (
-              <ActivityIndicator color="#c8d7ef" />
-            ) : (
-              <Text style={styles.testApiText}>Test API Connection</Text>
-            )}
-          </Pressable>
-
-          <Pressable
             onPress={onLogin}
             style={[styles.loginButton, busy && styles.loginButtonDisabled]}
-            disabled={busy || checkingApi}
+            disabled={busy}
           >
             {busy ? (
               <ActivityIndicator color="#041426" />
@@ -240,19 +197,5 @@ const styles = StyleSheet.create({
     color: '#041426',
     fontSize: 18,
     fontWeight: '700',
-  },
-  testApiButton: {
-    marginTop: 10,
-    borderRadius: 16,
-    paddingVertical: 14,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(135, 165, 209, 0.45)',
-    backgroundColor: 'rgba(17, 30, 61, 0.65)',
-  },
-  testApiText: {
-    color: '#c8d7ef',
-    fontSize: 15,
-    fontWeight: '600',
   },
 });
