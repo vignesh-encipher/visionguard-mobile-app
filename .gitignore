@@ -1,0 +1,102 @@
+# Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
+
+# ---------- Dependencies ----------
+node_modules/
+.pnp/
+.pnp.js
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/install-state.gz
+
+# ---------- Expo ----------
+.expo/
+.expo-shared/
+dist/
+web-build/
+expo-env.d.ts
+
+# ---------- Metro / React Native ----------
+.metro-health-check*
+.haste_cache/
+.react-native/
+
+# ---------- Build outputs ----------
+build/
+out/
+coverage/
+
+# ---------- Android ----------
+# Keep the android/ project, ignore only its build artifacts and local files
+android/.gradle/
+android/.idea/
+android/.kotlin/
+android/build/
+android/app/build/
+android/app/.cxx/
+android/captures/
+android/local.properties
+android/keystore.properties
+android/app/release/
+android/app/debug/
+android/.cxx/
+*.apk
+*.aab
+*.ap_
+*.dex
+*.hprof
+
+# ---------- iOS ----------
+# Keep the ios/ project, ignore only its build artifacts and local files
+ios/build/
+ios/Pods/
+ios/.xcode.env.local
+ios/*.xcworkspace/xcuserdata/
+ios/*.xcodeproj/xcuserdata/
+ios/*.xcodeproj/project.xcworkspace/xcuserdata/
+DerivedData/
+*.pbxuser
+*.mode1v3
+*.mode2v3
+*.perspectivev3
+*.xcuserstate
+
+# ---------- Native signing / certs ----------
+*.orig.*
+*.jks
+*.keystore
+*.p8
+*.p12
+*.key
+*.pem
+*.mobileprovision
+google-services.json
+GoogleService-Info.plist
+
+# ---------- Logs / debug ----------
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+pnpm-debug.log*
+*.log
+logs/
+
+# ---------- TypeScript ----------
+*.tsbuildinfo
+
+# ---------- Env files ----------
+.env
+.env.*
+!.env.example
+
+# ---------- Editor / OS ----------
+.vscode/
+.idea/
+*.iml
+.DS_Store
+Thumbs.db
+
+# ---------- Caches ----------
+.cache/
+.eslintcache
+.parcel-cache/
