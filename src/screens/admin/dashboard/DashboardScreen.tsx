@@ -9,6 +9,8 @@ import { useCallback, useState } from 'react';
 import type { AppTabId } from '../../../components/layout/AppFooter';
 import AppShell from '../../../components/layout/AppShell';
 import { RootStackParamList } from '../../types';
+import AlertsContent from '../alerts/AlertsContent';
+import CamerasContent from '../cameras/CamerasContent';
 import LiveCameraContent from '../livecamera/LiveCameraContent';
 import DashboardHomeContent from './DashboardHomeContent';
 
@@ -42,9 +44,9 @@ export default function DashboardScreen({ navigation, route }: Readonly<Props>) 
     ) : activeTab === 'Live' ? (
       <LiveCameraContent isActive={activeTab === 'Live'} />
     ) : activeTab === 'Alerts' ? (
-      <Placeholder title="Alerts" />
+      <AlertsContent />
     ) : activeTab === 'Cameras' ? (
-      <Placeholder title="Cameras" />
+      <CamerasContent />
     ) : (
       <Placeholder title="More" />
     );

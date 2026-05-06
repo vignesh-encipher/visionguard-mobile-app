@@ -300,7 +300,7 @@ export default function AppHeader({
                   profileMenuHighlightProfile ? styles.menuRowActive : undefined,
                 ]}
               >
-                <Ionicons name="person-outline" size={22} color="#111827" style={styles.menuIcon} />
+                <Ionicons name="person-outline" size={22} color="#cbd5e1" style={styles.menuIcon} />
                 <RNText style={styles.menuLabel}>Profile</RNText>
               </RNPressable>
 
@@ -313,7 +313,7 @@ export default function AppHeader({
                 }}
                 style={styles.menuRow}
               >
-                <Ionicons name="log-out-outline" size={22} color="#111827" style={styles.menuIcon} />
+                <Ionicons name="log-out-outline" size={22} color="#cbd5e1" style={styles.menuIcon} />
                 <RNText style={styles.menuLabel}>Logout</RNText>
               </RNPressable>
             </View>
@@ -387,13 +387,15 @@ const styles = StyleSheet.create({
     position: 'absolute',
   },
   menu: {
-    backgroundColor: '#ffffff',
+    backgroundColor: '#0d1526',
     borderRadius: MENU_RADIUS,
+    borderWidth: 1,
+    borderColor: '#1e293b',
     paddingVertical: 8,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.12,
-    shadowRadius: 24,
+    shadowOpacity: 0.24,
+    shadowRadius: 16,
     elevation: 12,
   },
   menuRow: {
@@ -403,7 +405,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   menuRowActive: {
-    backgroundColor: '#f3f4f6',
+    backgroundColor: 'rgba(56, 189, 248, 0.14)',
     borderRadius: 12,
     marginHorizontal: 8,
     paddingVertical: 10,
@@ -414,12 +416,12 @@ const styles = StyleSheet.create({
   },
   menuLabel: {
     fontSize: 16,
-    color: '#111827',
+    color: '#e2e8f0',
     fontWeight: '500',
   },
   divider: {
     height: StyleSheet.hairlineWidth,
-    backgroundColor: '#e5e7eb',
+    backgroundColor: '#1e293b',
     marginVertical: 4,
     marginHorizontal: 12,
   },

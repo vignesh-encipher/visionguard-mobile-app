@@ -58,16 +58,6 @@ export default function LiveCameraContent({ isActive }: Readonly<LiveCameraConte
       <Text color="$white" fontSize={28} fontWeight="$bold" mb="$2">
         Live cameras
       </Text>
-      {error ? (
-        <Text color="#f87171" fontSize={14} mb="$2">
-          {error}
-        </Text>
-      ) : (
-        <Text color="#94a3b8" fontSize={14} mb="$2">
-          MediaMTX WebRTC page: this browser session must reach the camera URL (same network as when you open it in Chrome).
-        </Text>
-      )}
-
       <Box>
         {showSkeletonList
           ? Array.from({ length: SKELETON_COUNT }).map((_, i) => <CameraStreamSkeleton key={`sk-${i}`} />)
