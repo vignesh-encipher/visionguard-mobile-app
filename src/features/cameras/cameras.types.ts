@@ -5,9 +5,12 @@ export type MonitorCameraDto = {
   siteName?: string;
   zoneId?: string;
   zoneName?: string;
+  modelConfigs?: Array<string | { modelName?: string }>;
   status?: string;
+  active?: boolean;
   cameraOnline?: boolean;
   isRecording?: boolean;
+  optimizationType?: string | null;
   mediaMtxWebRtcUrl?: string | null;
   mediaMtxRtspUrl?: string | null;
   hlsUrl?: string | null;

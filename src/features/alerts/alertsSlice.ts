@@ -2,29 +2,27 @@ import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
 import { apiClient } from '../../services/api/client';
 import { getApiErrorMessage } from '../../utils/apiError';
 import { getAuthToken } from '../../utils/storage';
-import type { MonitorCameraDto } from './cameras.types';
-import { extractCamerasPage } from './camerasResponse';
+import { extractAlertsPage } from './alertsResponse';
+import type { AlertDto } from './alerts.types';
 
-export type FetchMonitorCamerasArgs = {
+export type FetchAlertsArgs = {
   page?: number;
   size?: number;
   searchString?: string;
-  active?: boolean;
   append?: boolean;
-  /** When set, sent as `siteId` query param if backend supports it. */
-  siteId?: string | null;
+  userId?: string | null;
 };
 
-export const fetchMonitorCameras = createAsyncThunk<
+export const fetchAlerts = createAsyncThunk<
   {
-    content: MonitorCameraDto[];
+    content: AlertDto[];
     pageNumber?: number;
     hasNext?: boolean;
     append: boolean;
   },
-  FetchMonitorCamerasArgs | void,
+  FetchAlertsArgs | void,
   { rejectValue: string }
->('cameras/fetchMonitorPaged', async (args, { rejectWithValue }) => {
+>('alerts/fetchPaged', async (args, { rejectWithValue }) => {
   const token = await getAuthToken();
   if (!token) {
     return rejectWithValue('Not authenticated');
@@ -33,23 +31,21 @@ export const fetchMonitorCameras = createAsyncThunk<
   const page = args && typeof args === 'object' ? (args.page ?? 0) : 0;
   const size = args && typeof args === 'object' ? (args.size ?? 15) : 15;
   const searchString = args && typeof args === 'object' ? (args.searchString ?? '') : '';
-  const active = args && typeof args === 'object' ? (args.active ?? true) : true;
   const append = args && typeof args === 'object' ? (args.append ?? false) : false;
-  const siteId = args && typeof args === 'object' ? args.siteId : undefined;
+  const userId = args && typeof args === 'object' ? (args.userId ?? undefined) : undefined;
 
   try {
-    const { data } = await apiClient.get<unknown>('/monitor-cameras/paged', {
+    const { data } = await apiClient.get<unknown>('/analytics/paged', {
       params: {
         page,
         size,
         searchString,
-        active,
-        ...(siteId ? { siteId } : {}),
+        ...(userId ? { userId } : {}),
       },
     });
-    const pageDto = extractCamerasPage(data);
+    const pageDto = extractAlertsPage(data);
     if (!pageDto) {
-      return rejectWithValue('Invalid cameras response');
+      return rejectWithValue('Invalid alerts response');
     }
     return {
       content: pageDto.content,
@@ -58,12 +54,12 @@ export const fetchMonitorCameras = createAsyncThunk<
       append,
     };
   } catch (e) {
-    return rejectWithValue(getApiErrorMessage(e, 'Failed to load cameras'));
+    return rejectWithValue(getApiErrorMessage(e, 'Failed to load alerts'));
   }
 });
 
-type CamerasState = {
-  items: MonitorCameraDto[];
+type AlertsState = {
+  items: AlertDto[];
   status: 'idle' | 'loading' | 'succeeded' | 'failed';
   pageNumber: number;
   hasNext: boolean;
@@ -71,7 +67,7 @@ type CamerasState = {
   error: string | null;
 };
 
-const initialState: CamerasState = {
+const initialState: AlertsState = {
   items: [],
   status: 'idle',
   pageNumber: 0,
@@ -80,11 +76,11 @@ const initialState: CamerasState = {
   error: null,
 };
 
-const camerasSlice = createSlice({
-  name: 'cameras',
+const alertsSlice = createSlice({
+  name: 'alerts',
   initialState,
   reducers: {
-    clearCameras(state) {
+    clearAlerts(state) {
       state.items = [];
       state.status = 'idle';
       state.pageNumber = 0;
@@ -95,7 +91,7 @@ const camerasSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
-      .addCase(fetchMonitorCameras.pending, (state, action) => {
+      .addCase(fetchAlerts.pending, (state, action) => {
         const append = Boolean(action.meta.arg && typeof action.meta.arg === 'object' && action.meta.arg.append);
         state.status = 'loading';
         state.error = null;
@@ -106,19 +102,17 @@ const camerasSlice = createSlice({
           state.hasNext = false;
         }
       })
-      .addCase(fetchMonitorCameras.fulfilled, (state, action) => {
+      .addCase(fetchAlerts.fulfilled, (state, action) => {
         state.status = 'succeeded';
         state.isLoadingMore = false;
         state.pageNumber = action.payload.pageNumber ?? 0;
         state.hasNext = Boolean(action.payload.hasNext);
-        state.items = action.payload.append
-          ? [...state.items, ...action.payload.content]
-          : action.payload.content;
+        state.items = action.payload.append ? [...state.items, ...action.payload.content] : action.payload.content;
       })
-      .addCase(fetchMonitorCameras.rejected, (state, action) => {
+      .addCase(fetchAlerts.rejected, (state, action) => {
         state.status = 'failed';
         state.isLoadingMore = false;
-        state.error = action.payload ?? 'Failed to load cameras';
+        state.error = action.payload ?? 'Failed to load alerts';
         const append = Boolean(action.meta.arg && typeof action.meta.arg === 'object' && action.meta.arg.append);
         if (!append) {
           state.items = [];
@@ -127,5 +121,5 @@ const camerasSlice = createSlice({
   },
 });
 
-export const { clearCameras } = camerasSlice.actions;
-export default camerasSlice.reducer;
+export const { clearAlerts } = alertsSlice.actions;
+export default alertsSlice.reducer;

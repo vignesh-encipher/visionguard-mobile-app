@@ -5,4 +5,5 @@ export type RootStackParamList = {
     initialTab?: 'Home' | 'Live' | 'Alerts' | 'Cameras' | 'More';
   };
   Profile: { email: string };
+  AlertDetails: { alertId: string };
 };

@@ -1,4 +1,4 @@
-import { Box, Text, VStack } from '@gluestack-ui/themed';
+import { Box, HStack, Spinner, Text, VStack } from '@gluestack-ui/themed';
 import { useEffect } from 'react';
 import { fetchMonitorCameras } from '../../../features/cameras/camerasSlice';
 import type { MonitorCameraDto } from '../../../features/cameras/cameras.types';
@@ -6,7 +6,7 @@ import { useAppDispatch, useAppSelector } from '../../../store/hooks';
 import CameraStreamCard from './CameraStreamCard';
 import CameraStreamSkeleton from './CameraStreamSkeleton';
 
-const SKELETON_COUNT = 3;
+const SKELETON_COUNT = 5;
 
 function cameraSubtitle(cam: MonitorCameraDto): string {
   const parts = [cam.siteName, cam.zoneName].filter(Boolean);
@@ -31,24 +31,44 @@ function pickStreamUrl(cam: MonitorCameraDto): string | null {
 export type LiveCameraContentProps = {
   /** Fetch + render streams only while the Live tab is visible. */
   isActive: boolean;
+  /** Changes whenever user taps a dashboard tab to force refresh. */
+  reloadKey: number;
+  /** Changes when main scroll reaches end to load next page. */
+  loadMoreKey: number;
 };
 
-export default function LiveCameraContent({ isActive }: Readonly<LiveCameraContentProps>) {
+export default function LiveCameraContent({ isActive, reloadKey, loadMoreKey }: Readonly<LiveCameraContentProps>) {
   const dispatch = useAppDispatch();
   const selectedSiteId = useAppSelector((s) => s.sites.selectedSiteId);
-  const { items, status, error } = useAppSelector((s) => s.cameras);
+  const { items, status, error, pageNumber, hasNext, isLoadingMore } = useAppSelector((s) => s.cameras);
 
   useEffect(() => {
     if (!isActive) return;
     void dispatch(
       fetchMonitorCameras({
         page: 0,
-        size: 12,
+        size: 15,
+        searchString: '',
         active: true,
         siteId: selectedSiteId,
+        append: false,
       }),
     );
-  }, [dispatch, isActive, selectedSiteId]);
+  }, [dispatch, isActive, selectedSiteId, reloadKey]);
+
+  useEffect(() => {
+    if (!isActive || !hasNext || status === 'loading' || isLoadingMore) return;
+    void dispatch(
+      fetchMonitorCameras({
+        page: pageNumber + 1,
+        size: 15,
+        searchString: '',
+        active: true,
+        siteId: selectedSiteId,
+        append: true,
+      }),
+    );
+  }, [dispatch, isActive, selectedSiteId, loadMoreKey, hasNext, pageNumber, status, isLoadingMore]);
 
   const loading = status === 'loading';
   const showSkeletonList = loading && items.length === 0;
@@ -80,6 +100,15 @@ export default function LiveCameraContent({ isActive }: Readonly<LiveCameraConte
           <Text color="#64748b" py="$8" textAlign="center">
             No cameras found.
           </Text>
+        ) : null}
+
+        {isLoadingMore ? (
+          <HStack py="$4" justifyContent="center" alignItems="center" space="sm">
+            <Spinner size="small" color="#38bdf8" />
+            <Text color="#94a3b8" fontSize={12}>
+              Loading more...
+            </Text>
+          </HStack>
         ) : null}
       </Box>
     </VStack>

@@ -11,13 +11,14 @@ export type AppShellProps = {
   activeTab: AppFooterProps['activeTab'];
   onTabChange: AppFooterProps['onTabChange'];
   headerProps?: AppHeaderProps;
+  onMainEndReached?: () => void;
 };
 
-export default function AppShell({ children, activeTab, onTabChange, headerProps }: AppShellProps) {
+export default function AppShell({ children, activeTab, onTabChange, headerProps, onMainEndReached }: AppShellProps) {
   return (
     <Box flex={1} bg={BG}>
       <AppHeader {...headerProps} />
-      <AppMain>{children}</AppMain>
+      <AppMain onEndReached={onMainEndReached}>{children}</AppMain>
       <AppFooter activeTab={activeTab} onTabChange={onTabChange} />
     </Box>
   );

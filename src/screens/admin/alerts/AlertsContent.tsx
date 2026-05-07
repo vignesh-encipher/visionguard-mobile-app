@@ -1,102 +1,26 @@
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
-import { Box, HStack, Text, VStack } from '@gluestack-ui/themed';
+import { Box, HStack, Pressable, Spinner, Text, VStack } from '@gluestack-ui/themed';
+import { useEffect } from 'react';
+import { fetchAlerts } from '../../../features/alerts/alertsSlice';
+import type { AlertDto } from '../../../features/alerts/alerts.types';
+import type { RootStackParamList } from '../../types';
+import { useAppDispatch, useAppSelector } from '../../../store/hooks';
 
 type AlertSeverity = 'High' | 'Critical' | 'Medium';
 type AlertStatus = 'New' | 'Picked' | 'Resolved';
 
-type AlertItem = {
-  id: string;
-  title: string;
-  location: string;
-  violator: string;
-  chosen: string;
-  last: string;
-  severity: AlertSeverity;
-  status: AlertStatus;
+export type AlertsContentProps = {
+  /** Fetch + render only while Alerts tab is visible. */
+  isActive: boolean;
+  /** Changes whenever user taps a dashboard tab to force refresh. */
+  reloadKey: number;
+  /** Changes when main scroll reaches end to load next page. */
+  loadMoreKey: number;
 };
 
-const alerts: AlertItem[] = [
-  {
-    id: 'a1',
-    title: 'No Helmet',
-    location: 'Site 1 \u00b7 Zone A \u00b7 Cam-01',
-    violator: 'Worker A',
-    chosen: 'Supervisor B',
-    last: '2024-03-10 14:32',
-    severity: 'High',
-    status: 'New',
-  },
-  {
-    id: 'a2',
-    title: 'Fire Detected',
-    location: 'Site 2 \u00b7 Zone B \u00b7 Cam-05',
-    violator: 'N/A',
-    chosen: 'N/A',
-    last: '2024-03-10 14:28',
-    severity: 'Critical',
-    status: 'Picked',
-  },
-  {
-    id: 'a3',
-    title: 'No Vest',
-    location: 'Site 1 \u00b7 Zone A \u00b7 Cam-02',
-    violator: 'Worker C',
-    chosen: 'Supervisor D',
-    last: '2024-03-10 13:55',
-    severity: 'Medium',
-    status: 'Resolved',
-  },
-  {
-    id: 'a4',
-    title: 'No Gloves',
-    location: 'Site 3 \u00b7 Zone C \u00b7 Cam-07',
-    violator: 'Worker D',
-    chosen: 'Supervisor A',
-    last: '2024-03-10 13:40',
-    severity: 'High',
-    status: 'New',
-  },
-  {
-    id: 'a5',
-    title: 'Unauthorized Entry',
-    location: 'Site 2 \u00b7 Gate 1 \u00b7 Cam-03',
-    violator: 'Unknown',
-    chosen: 'Security Lead',
-    last: '2024-03-10 13:26',
-    severity: 'Critical',
-    status: 'Picked',
-  },
-  {
-    id: 'a6',
-    title: 'No Mask',
-    location: 'Site 4 \u00b7 Lab \u00b7 Cam-11',
-    violator: 'Worker E',
-    chosen: 'Supervisor C',
-    last: '2024-03-10 13:18',
-    severity: 'Medium',
-    status: 'Resolved',
-  },
-  {
-    id: 'a7',
-    title: 'Restricted Zone Breach',
-    location: 'Site 5 \u00b7 Zone D \u00b7 Cam-04',
-    violator: 'Visitor X',
-    chosen: 'Security Team',
-    last: '2024-03-10 13:09',
-    severity: 'High',
-    status: 'Picked',
-  },
-  {
-    id: 'a8',
-    title: 'Smoke Detected',
-    location: 'Site 1 \u00b7 Warehouse \u00b7 Cam-09',
-    violator: 'N/A',
-    chosen: 'Safety Officer',
-    last: '2024-03-10 12:58',
-    severity: 'Critical',
-    status: 'New',
-  },
-];
+const SKELETON_COUNT = 5;
 
 function severityColors(severity: AlertSeverity) {
   if (severity === 'Critical') {
@@ -118,71 +42,200 @@ function statusColors(status: AlertStatus) {
   return { bg: 'rgba(3, 105, 161, 0.58)', color: '#38bdf8' };
 }
 
-export default function AlertsContent() {
+function titleFromModelType(alert: AlertDto): string {
+  const modelType = alert.modelType?.trim();
+  if (!modelType) return 'Alert';
+  return modelType
+    .split('_')
+    .map((part) => part.charAt(0) + part.slice(1).toLowerCase())
+    .join(' ');
+}
+
+function locationFromAlert(alert: AlertDto): string {
+  return [alert.siteName, alert.zoneName, alert.cameraName].filter(Boolean).join(' · ') || '-';
+}
+
+function severityFromPriority(alert: AlertDto): AlertSeverity {
+  const priority = (alert.priority ?? '').toUpperCase();
+  if (priority === 'CRITICAL') return 'Critical';
+  if (priority === 'HIGH') return 'High';
+  return 'Medium';
+}
+
+function statusFromWorkflow(alert: AlertDto): AlertStatus {
+  const wf = (alert.currentTimeLine?.workFlowStatus ?? '').toUpperCase();
+  if (wf === 'RESOLVED') return 'Resolved';
+  if (wf === 'PICKED' || wf === 'IN_PROGRESS') return 'Picked';
+  return 'New';
+}
+
+function formatDate(value?: string | null): string {
+  if (!value) return '-';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '-';
+  return date.toLocaleString();
+}
+
+function AlertCardSkeleton({ idx }: Readonly<{ idx: number }>) {
+  return (
+    <Box
+      key={`alert-skeleton-${idx}`}
+      px="$4"
+      py="$4"
+      borderRadius="$2xl"
+      borderWidth={1}
+      borderColor="rgba(56, 189, 248, 0.12)"
+      bg="#040d22"
+    >
+      <Box w={140} h={16} borderRadius="$full" bg="rgba(148, 163, 184, 0.22)" />
+      <Box w={220} h={14} borderRadius="$full" bg="rgba(71, 85, 105, 0.35)" mt="$2" />
+      <HStack mt="$2" justifyContent="space-between">
+        <Box w={120} h={14} borderRadius="$full" bg="rgba(100, 116, 139, 0.3)" />
+        <Box w={120} h={14} borderRadius="$full" bg="rgba(100, 116, 139, 0.3)" />
+      </HStack>
+      <HStack mt="$3" justifyContent="space-between" alignItems="center">
+        <Box w={120} h={16} borderRadius="$full" bg="rgba(100, 116, 139, 0.3)" />
+        <HStack space="sm">
+          <Box w={64} h={24} borderRadius="$full" bg="rgba(30, 41, 59, 0.75)" />
+          <Box w={64} h={24} borderRadius="$full" bg="rgba(30, 41, 59, 0.75)" />
+        </HStack>
+      </HStack>
+    </Box>
+  );
+}
+
+export default function AlertsContent({ isActive, reloadKey, loadMoreKey }: Readonly<AlertsContentProps>) {
+  const dispatch = useAppDispatch();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const userId = useAppSelector((s) => s.auth.user?.id ?? null);
+  const { items, status, error, pageNumber, hasNext, isLoadingMore } = useAppSelector((s) => s.alerts);
+
+  useEffect(() => {
+    if (!isActive) return;
+    void dispatch(
+      fetchAlerts({
+        page: 0,
+        size: 15,
+        searchString: '',
+        userId,
+        append: false,
+      }),
+    );
+  }, [dispatch, isActive, userId, reloadKey]);
+
+  useEffect(() => {
+    if (!isActive || !hasNext || status === 'loading' || isLoadingMore) return;
+    void dispatch(
+      fetchAlerts({
+        page: pageNumber + 1,
+        size: 15,
+        searchString: '',
+        userId,
+        append: true,
+      }),
+    );
+  }, [dispatch, isActive, userId, loadMoreKey, hasNext, pageNumber, status, isLoadingMore]);
+
+  const loading = status === 'loading';
+
   return (
     <VStack mt="$2" mb="$4" space="md">
       <Text color="$white" fontSize={28} fontWeight="$bold" mb="$2">
         Alerts
       </Text>
-      {alerts.map((item) => {
-        const severity = severityColors(item.severity);
-        const status = statusColors(item.status);
+      {error ? (
+        <Text color="#ef4444" fontSize={13} mb="$2">
+          {error}
+        </Text>
+      ) : null}
+
+      {loading && items.length === 0
+        ? Array.from({ length: SKELETON_COUNT }).map((_, idx) => <AlertCardSkeleton key={idx} idx={idx} />)
+        : null}
+
+      {!loading && items.length === 0 ? (
+        <Text color="#64748b" py="$8" textAlign="center">
+          No alerts found.
+        </Text>
+      ) : null}
+
+      {items.map((item) => {
+        const severityValue = severityFromPriority(item);
+        const statusValue = statusFromWorkflow(item);
+        const severity = severityColors(severityValue);
+        const statusColor = statusColors(statusValue);
 
         return (
-          <Box
-            key={item.id}
-            px="$4"
-            py="$4"
-            borderRadius="$2xl"
-            borderWidth={1}
-            borderColor="rgba(56, 189, 248, 0.22)"
-            bg="#040d22"
-          >
-            <VStack flex={1} pr="$2">
-              <Text color="#e2e8f0" fontSize={16} fontWeight="$bold">
-                {item.title}
-              </Text>
-              <Text color="#7b93b5" fontSize={14} mt="$2">
-                {item.location}
-              </Text>
-            </VStack>
-
-            <HStack mt="$2" justifyContent="space-between">
-              <VStack flex={1} pr="$3">
-                <Text color="#7b93b5" fontSize={12}>
-                  Violator: <Text color="#e2e8f0" fontSize={12} fontWeight="$bold">{item.violator}</Text>
+          <Pressable key={item.id} onPress={() => navigation.navigate('AlertDetails', { alertId: item.id })}>
+            <Box
+              px="$4"
+              py="$4"
+              borderRadius="$2xl"
+              borderWidth={1}
+              borderColor="rgba(56, 189, 248, 0.22)"
+              bg="#040d22"
+            >
+              <VStack flex={1} pr="$2">
+                <Text color="#e2e8f0" fontSize={16} fontWeight="$bold">
+                  {titleFromModelType(item)}
+                </Text>
+                <Text color="#7b93b5" fontSize={14} mt="$2">
+                  {locationFromAlert(item)}
                 </Text>
               </VStack>
-              <VStack flex={1}>
-                <Text color="#7b93b5" fontSize={12}>
-                  Chosen: <Text color="#e2e8f0" fontSize={12} fontWeight="$bold">{item.chosen}</Text>
-                </Text>
-              </VStack>
-            </HStack>
 
-            <HStack mt="$2" justifyContent="space-between" alignItems="center">
-              <HStack flex={1} pr="$2" alignItems="center" space="xs">
-                <Ionicons name="time-outline" size={18} color="#7b93b5" />
-                <Text color="#d1d9e8" fontSize={12} fontWeight="$medium">
-                  {item.last}
-                </Text>
-              </HStack>
-              <HStack space="sm">
-                <Box px="$3" py="$1" borderRadius="$full" bg={severity.bg}>
-                  <Text color={severity.color} fontSize={12} fontWeight="$bold">
-                    {item.severity}
+              <HStack mt="$2" justifyContent="space-between">
+                <VStack flex={1} pr="$3">
+                  <Text color="#7b93b5" fontSize={12}>
+                    Violator:{' '}
+                    <Text color="#e2e8f0" fontSize={12} fontWeight="$bold">
+                      {item.personName ?? item.personId ?? 'Unknown'}
+                    </Text>
                   </Text>
-                </Box>
-                <Box px="$3" py="$1" borderRadius="$full" bg={status.bg}>
-                  <Text color={status.color} fontSize={12} fontWeight="$bold">
-                    {item.status}
+                </VStack>
+                <VStack flex={1}>
+                  <Text color="#7b93b5" fontSize={12}>
+                    Chosen:{' '}
+                    <Text color="#e2e8f0" fontSize={12} fontWeight="$bold">
+                      {item.currentTimeLine?.userName ?? 'SYSTEM'}
+                    </Text>
                   </Text>
-                </Box>
+                </VStack>
               </HStack>
-            </HStack>
-          </Box>
+
+              <HStack mt="$2" justifyContent="space-between" alignItems="center">
+                <HStack flex={1} pr="$2" alignItems="center" space="xs">
+                  <Ionicons name="time-outline" size={18} color="#7b93b5" />
+                  <Text color="#d1d9e8" fontSize={12} fontWeight="$medium">
+                    {formatDate(item.receivedAt)}
+                  </Text>
+                </HStack>
+                <HStack space="sm">
+                  <Box px="$3" py="$1" borderRadius="$full" bg={severity.bg}>
+                    <Text color={severity.color} fontSize={12} fontWeight="$bold">
+                      {severityValue}
+                    </Text>
+                  </Box>
+                  <Box px="$3" py="$1" borderRadius="$full" bg={statusColor.bg}>
+                    <Text color={statusColor.color} fontSize={12} fontWeight="$bold">
+                      {statusValue}
+                    </Text>
+                  </Box>
+                </HStack>
+              </HStack>
+            </Box>
+          </Pressable>
         );
       })}
+
+      {isLoadingMore ? (
+        <HStack py="$4" justifyContent="center" alignItems="center" space="sm">
+          <Spinner size="small" color="#38bdf8" />
+          <Text color="#94a3b8" fontSize={12}>
+            Loading more...
+          </Text>
+        </HStack>
+      ) : null}
     </VStack>
   );
 }

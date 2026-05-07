@@ -1,4 +1,5 @@
 import { CommonActions } from '@react-navigation/native';
+import { clearAlerts } from '../../../features/alerts/alertsSlice';
 import { logout } from '../../../features/auth/authSlice';
 import { clearCameras } from '../../../features/cameras/camerasSlice';
 import { clearSites } from '../../../features/sites/sitesSlice';
@@ -30,6 +31,7 @@ export default function Profile({ navigation, route }: Readonly<Props>) {
         profileMenuHighlightProfile: true,
         onMenuProfile: () => {},
         onMenuLogout: () => {
+          dispatch(clearAlerts());
           dispatch(clearCameras());
           dispatch(clearSites());
           dispatch(logout());
