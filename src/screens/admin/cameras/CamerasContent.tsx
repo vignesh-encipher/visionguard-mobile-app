@@ -95,21 +95,21 @@ export default function CamerasContent() {
             opacity={cardOpacity}
           >
             <HStack justifyContent="space-between" alignItems="center">
-              <Text color="#e2e8f0" fontSize={18} fontWeight="$bold">
+              <Text color="#e2e8f0" fontSize={16} fontWeight="$bold">
                 {camera.name}
               </Text>
               <Box px="$3" py="$1" borderRadius="$full" bg={status.bg}>
-                <Text color={status.color} fontSize={13} fontWeight="$bold">
+                <Text color={status.color} fontSize={12} fontWeight="$bold">
                   {camera.status}
                 </Text>
               </Box>
             </HStack>
 
-            <Text color="#7b93b5" fontSize={18} mt="$1">
+            <Text color="#7b93b5" fontSize={14} mt="$1">
               {camera.siteZone}
             </Text>
 
-            <HStack mt="$3" flexWrap="wrap">
+            <HStack mt="$2" flexWrap="wrap">
               {camera.labels.map((label) => {
                 const style = labelStyles[label] ?? { bg: 'rgba(15, 23, 42, 0.7)', color: '#cbd5e1' };
                 return (
@@ -122,9 +122,9 @@ export default function CamerasContent() {
               })}
             </HStack>
 
-            <HStack mt="$2" justifyContent="space-between" alignItems="center">
+            <HStack justifyContent="space-between" alignItems="center">
               <Box px="$3" py="$1" borderRadius="$full" bg={camera.enabled ? 'rgba(6, 78, 59, 0.6)' : 'rgba(67, 56, 202, 0.35)'}>
-                <Text color={camera.enabled ? '#22c55e' : '#a5b4fc'} fontSize={16} fontWeight="$bold">
+                <Text color={camera.enabled ? '#22c55e' : '#a5b4fc'} fontSize={12} fontWeight="$bold">
                   {camera.modeLabel}
                 </Text>
               </Box>

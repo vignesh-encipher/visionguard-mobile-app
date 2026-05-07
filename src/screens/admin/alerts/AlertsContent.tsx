@@ -139,42 +139,42 @@ export default function AlertsContent() {
             bg="#040d22"
           >
             <VStack flex={1} pr="$2">
-              <Text color="#e2e8f0" fontSize={18} fontWeight="$bold">
+              <Text color="#e2e8f0" fontSize={16} fontWeight="$bold">
                 {item.title}
               </Text>
-              <Text color="#7b93b5" fontSize={15} mt="$1">
+              <Text color="#7b93b5" fontSize={14} mt="$2">
                 {item.location}
               </Text>
             </VStack>
 
-            <HStack mt="$4" justifyContent="space-between">
+            <HStack mt="$2" justifyContent="space-between">
               <VStack flex={1} pr="$3">
-                <Text color="#7b93b5" fontSize={15}>
-                  Violator: <Text color="#e2e8f0" fontWeight="$bold">{item.violator}</Text>
+                <Text color="#7b93b5" fontSize={12}>
+                  Violator: <Text color="#e2e8f0" fontSize={12} fontWeight="$bold">{item.violator}</Text>
                 </Text>
               </VStack>
               <VStack flex={1}>
-                <Text color="#7b93b5" fontSize={15}>
-                  Chosen: <Text color="#e2e8f0" fontWeight="$bold">{item.chosen}</Text>
+                <Text color="#7b93b5" fontSize={12}>
+                  Chosen: <Text color="#e2e8f0" fontSize={12} fontWeight="$bold">{item.chosen}</Text>
                 </Text>
               </VStack>
             </HStack>
 
-            <HStack mt="$3" justifyContent="space-between" alignItems="center">
+            <HStack mt="$2" justifyContent="space-between" alignItems="center">
               <HStack flex={1} pr="$2" alignItems="center" space="xs">
                 <Ionicons name="time-outline" size={18} color="#7b93b5" />
-                <Text color="#d1d9e8" fontSize={13} fontWeight="$medium">
+                <Text color="#d1d9e8" fontSize={12} fontWeight="$medium">
                   {item.last}
                 </Text>
               </HStack>
               <HStack space="sm">
                 <Box px="$3" py="$1" borderRadius="$full" bg={severity.bg}>
-                  <Text color={severity.color} fontSize={13} fontWeight="$bold">
+                  <Text color={severity.color} fontSize={12} fontWeight="$bold">
                     {item.severity}
                   </Text>
                 </Box>
                 <Box px="$3" py="$1" borderRadius="$full" bg={status.bg}>
-                  <Text color={status.color} fontSize={13} fontWeight="$bold">
+                  <Text color={status.color} fontSize={12} fontWeight="$bold">
                     {item.status}
                   </Text>
                 </Box>
