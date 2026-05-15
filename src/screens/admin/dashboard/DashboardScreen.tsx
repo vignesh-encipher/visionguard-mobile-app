@@ -46,7 +46,7 @@ export default function DashboardScreen({ navigation, route }: Readonly<Props>) 
 
   const body =
     activeTab === 'Home' ? (
-      <DashboardHomeContent />
+      <DashboardHomeContent isActive={activeTab === 'Home'} reloadKey={tabReloadKey} />
     ) : activeTab === 'Live' ? (
       <LiveCameraContent
         isActive={activeTab === 'Live'}

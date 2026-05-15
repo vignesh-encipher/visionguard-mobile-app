@@ -24,3 +24,16 @@ export function extractAlertsPage(body: unknown): AlertsPageDto | null {
     hasPrevious: typeof r.hasPrevious === 'boolean' ? r.hasPrevious : undefined,
   };
 }
+
+export function extractAlertDetails(body: unknown): AlertDto | null {
+  if (!body || typeof body !== 'object') return null;
+  const top = body as Record<string, unknown>;
+
+  if (typeof top.status === 'string' && top.status.toUpperCase() !== 'SUCCESS') {
+    return null;
+  }
+
+  const res = top.response;
+  if (!res || typeof res !== 'object') return null;
+  return res as AlertDto;
+}

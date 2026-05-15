@@ -2,7 +2,7 @@ import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
 import { apiClient } from '../../services/api/client';
 import { getApiErrorMessage } from '../../utils/apiError';
 import { getAuthToken } from '../../utils/storage';
-import { extractAlertsPage } from './alertsResponse';
+import { extractAlertDetails, extractAlertsPage } from './alertsResponse';
 import type { AlertDto } from './alerts.types';
 
 export type FetchAlertsArgs = {
@@ -58,12 +58,37 @@ export const fetchAlerts = createAsyncThunk<
   }
 });
 
+export const fetchAlertById = createAsyncThunk<
+  AlertDto,
+  { alertId: string },
+  { rejectValue: string }
+>('alerts/fetchById', async ({ alertId }, { rejectWithValue }) => {
+  const token = await getAuthToken();
+  if (!token) {
+    return rejectWithValue('Not authenticated');
+  }
+
+  try {
+    const { data } = await apiClient.get<unknown>(`/analytics/${alertId}`);
+    const alert = extractAlertDetails(data);
+    if (!alert) {
+      return rejectWithValue('Invalid alert details response');
+    }
+    return alert;
+  } catch (e) {
+    return rejectWithValue(getApiErrorMessage(e, 'Failed to load alert details'));
+  }
+});
+
 type AlertsState = {
   items: AlertDto[];
   status: 'idle' | 'loading' | 'succeeded' | 'failed';
   pageNumber: number;
   hasNext: boolean;
   isLoadingMore: boolean;
+  detailItem: AlertDto | null;
+  detailStatus: 'idle' | 'loading' | 'succeeded' | 'failed';
+  detailError: string | null;
   error: string | null;
 };
 
@@ -73,6 +98,9 @@ const initialState: AlertsState = {
   pageNumber: 0,
   hasNext: false,
   isLoadingMore: false,
+  detailItem: null,
+  detailStatus: 'idle',
+  detailError: null,
   error: null,
 };
 
@@ -86,6 +114,9 @@ const alertsSlice = createSlice({
       state.pageNumber = 0;
       state.hasNext = false;
       state.isLoadingMore = false;
+      state.detailItem = null;
+      state.detailStatus = 'idle';
+      state.detailError = null;
       state.error = null;
     },
   },
@@ -117,6 +148,18 @@ const alertsSlice = createSlice({
         if (!append) {
           state.items = [];
         }
+      })
+      .addCase(fetchAlertById.pending, (state) => {
+        state.detailStatus = 'loading';
+        state.detailError = null;
+      })
+      .addCase(fetchAlertById.fulfilled, (state, action) => {
+        state.detailStatus = 'succeeded';
+        state.detailItem = action.payload;
+      })
+      .addCase(fetchAlertById.rejected, (state, action) => {
+        state.detailStatus = 'failed';
+        state.detailError = action.payload ?? 'Failed to load alert details';
       });
   },
 });

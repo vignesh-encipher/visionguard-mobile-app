@@ -75,6 +75,11 @@ export async function getRefreshToken(): Promise<string | null> {
   return AsyncStorage.getItem(LEGACY_REFRESH);
 }
 
+export async function getOrganizationId(): Promise<string | null> {
+  const id = await AsyncStorage.getItem(SESSION_KEYS.organizationId);
+  return id?.trim() || null;
+}
+
 /** Clears all locally persisted app storage on logout. */
 export async function clearAuthStorage(): Promise<void> {
   await AsyncStorage.clear();

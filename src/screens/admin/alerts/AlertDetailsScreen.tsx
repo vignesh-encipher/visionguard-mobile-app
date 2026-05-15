@@ -1,10 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Box, HStack, Pressable, ScrollView, Text, VStack } from '@gluestack-ui/themed';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useEffect } from 'react';
+import { fetchAlertById } from '../../../features/alerts/alertsSlice';
 import { RootStackParamList } from '../../types';
 import type { AlertTimelineItem } from '../../../features/alerts/alerts.types';
 import AppHeader, { APP_HORIZONTAL_PADDING } from '../../../components/layout/AppHeader';
-import { useAppSelector } from '../../../store/hooks';
+import { useAppDispatch, useAppSelector } from '../../../store/hooks';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'AlertDetails'>;
 
@@ -80,15 +82,131 @@ function TimelineRow({ item, isLast }: Readonly<{ item: AlertTimelineItem; isLas
   );
 }
 
+function AlertDetailsSkeleton() {
+  return (
+    <VStack space="md">
+      <Box bg={CARD} borderRadius="$2xl" borderWidth={1} borderColor={CARD_BORDER} px="$4" py="$4">
+        <HStack justifyContent="space-between" alignItems="center" mb="$3">
+          <Box h={16} w="45%" bg="rgba(148, 163, 184, 0.22)" borderRadius="$full" />
+          <Box h={24} w={64} bg="rgba(59, 130, 246, 0.2)" borderRadius="$lg" />
+        </HStack>
+        <Box h={12} w="72%" bg="rgba(100, 116, 139, 0.25)" borderRadius="$full" mb="$2" />
+        <Box h={12} w="52%" bg="rgba(100, 116, 139, 0.25)" borderRadius="$full" />
+      </Box>
+
+      <Box bg={CARD} borderRadius="$2xl" borderWidth={1} borderColor={CARD_BORDER} px="$4" py="$4">
+        <Box h={16} w="48%" bg="rgba(148, 163, 184, 0.22)" borderRadius="$full" mb="$4" />
+        <HStack space="md" mb="$3">
+          <VStack flex={1} space="xs">
+            <Box h={10} w="50%" bg="rgba(100, 116, 139, 0.25)" borderRadius="$full" />
+            <Box h={12} w="75%" bg="rgba(148, 163, 184, 0.22)" borderRadius="$full" />
+          </VStack>
+          <VStack flex={1} space="xs">
+            <Box h={10} w="50%" bg="rgba(100, 116, 139, 0.25)" borderRadius="$full" />
+            <Box h={12} w="75%" bg="rgba(148, 163, 184, 0.22)" borderRadius="$full" />
+          </VStack>
+        </HStack>
+        <HStack space="md">
+          <VStack flex={1} space="xs">
+            <Box h={10} w="50%" bg="rgba(100, 116, 139, 0.25)" borderRadius="$full" />
+            <Box h={12} w="70%" bg="rgba(148, 163, 184, 0.22)" borderRadius="$full" />
+          </VStack>
+          <VStack flex={1} space="xs">
+            <Box h={10} w="60%" bg="rgba(100, 116, 139, 0.25)" borderRadius="$full" />
+            <Box h={12} w="85%" bg="rgba(148, 163, 184, 0.22)" borderRadius="$full" />
+          </VStack>
+        </HStack>
+      </Box>
+
+      <Box bg={CARD} borderRadius="$2xl" borderWidth={1} borderColor={CARD_BORDER} px="$4" py="$4">
+        <Box h={16} w="45%" bg="rgba(148, 163, 184, 0.22)" borderRadius="$full" mb="$3" />
+        <Box
+          borderRadius="$xl"
+          borderWidth={1}
+          borderColor="rgba(100, 116, 139, 0.35)"
+          px="$4"
+          py="$8"
+          alignItems="center"
+          bg="rgba(30, 41, 59, 0.45)"
+        >
+          <Box w={60} h={60} borderRadius="$full" bg="rgba(59, 130, 246, 0.2)" mb="$3" />
+          <Box h={12} w="45%" bg="rgba(148, 163, 184, 0.22)" borderRadius="$full" mb="$2" />
+          <Box h={10} w="55%" bg="rgba(100, 116, 139, 0.25)" borderRadius="$full" />
+        </Box>
+        <HStack mt="$4" space="sm">
+          <Box flex={1} h={42} borderRadius="$lg" borderWidth={1} borderColor="rgba(239, 68, 68, 0.5)" />
+          <Box flex={1} h={42} borderRadius="$lg" borderWidth={1} borderColor="rgba(234, 179, 8, 0.5)" />
+        </HStack>
+      </Box>
+
+      <Box bg={CARD} borderRadius="$2xl" borderWidth={1} borderColor={CARD_BORDER} px="$4" py="$4">
+        <Box h={16} w="40%" bg="rgba(148, 163, 184, 0.22)" borderRadius="$full" mb="$4" />
+        {Array.from({ length: 3 }).map((_, idx) => (
+          <HStack key={`timeline-skeleton-${idx}`} alignItems="flex-start" space="sm" mb={idx === 2 ? '$0' : '$3'}>
+            <VStack alignItems="center">
+              <Box w={16} h={16} borderRadius="$full" borderWidth={2} borderColor="rgba(59, 130, 246, 0.5)" />
+              {idx !== 2 ? <Box w={2} h={34} bg="rgba(71, 85, 105, 0.45)" my="$1" /> : null}
+            </VStack>
+            <VStack flex={1} space="xs">
+              <Box h={12} w="32%" bg="rgba(148, 163, 184, 0.22)" borderRadius="$full" />
+              <Box h={10} w="70%" bg="rgba(100, 116, 139, 0.25)" borderRadius="$full" />
+              <Box h={22} w={72} bg="rgba(59, 130, 246, 0.2)" borderRadius="$md" />
+            </VStack>
+          </HStack>
+        ))}
+      </Box>
+    </VStack>
+  );
+}
+
 export default function AlertDetailsScreen({ navigation, route }: Readonly<Props>) {
+  const dispatch = useAppDispatch();
   const { alertId } = route.params;
-  const alert = useAppSelector((s) => s.alerts.items.find((item) => item.id === alertId));
+  const detailItem = useAppSelector((s) => s.alerts.detailItem);
+  const detailStatus = useAppSelector((s) => s.alerts.detailStatus);
+  const detailError = useAppSelector((s) => s.alerts.detailError);
+  const listItem = useAppSelector((s) => s.alerts.items.find((item) => item.id === alertId));
+  const alert = detailItem?.id === alertId ? detailItem : listItem;
   const fallbackEmail = useAppSelector(
     (s) => s.auth.userEmail ?? s.auth.user?.email ?? s.auth.user?.username ?? '',
   );
   const handleBack = () => {
     navigation.navigate('Dashboard', { email: fallbackEmail, initialTab: 'Alerts' });
   };
+
+  useEffect(() => {
+    void dispatch(fetchAlertById({ alertId }));
+  }, [dispatch, alertId]);
+
+  if (detailStatus === 'loading') {
+    return (
+      <Box flex={1} bg={BG}>
+        <AppHeader />
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 24 }}>
+          <VStack px={APP_HORIZONTAL_PADDING} pt="$4" space="md">
+            <Pressable
+              onPress={handleBack}
+              alignSelf="flex-start"
+              px="$3"
+              py="$2"
+              borderRadius="$full"
+              bg="rgba(15, 23, 42, 0.95)"
+              borderWidth={1}
+              borderColor="rgba(56, 189, 248, 0.35)"
+            >
+              <HStack alignItems="center" space="xs">
+                <Ionicons name="arrow-back" size={16} color="#e2e8f0" />
+                <Text color="#e2e8f0" fontSize={12} fontWeight="$bold">
+                  Back
+                </Text>
+              </HStack>
+            </Pressable>
+            <AlertDetailsSkeleton />
+          </VStack>
+        </ScrollView>
+      </Box>
+    );
+  }
 
   if (!alert) {
     return (
@@ -99,6 +217,11 @@ export default function AlertDetailsScreen({ navigation, route }: Readonly<Props
         <Text color="#e2e8f0" fontSize={16} fontWeight="$bold">
           Alert not found
         </Text>
+        {detailError ? (
+          <Text color="#ef4444" fontSize={12} mt="$2">
+            {detailError}
+          </Text>
+        ) : null}
       </Box>
     );
   }
