@@ -1,32 +1,16 @@
 import { Box, HStack, Spinner, Text, VStack } from '@gluestack-ui/themed';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useEffect } from 'react';
 import { fetchMonitorCameras } from '../../../features/cameras/camerasSlice';
 import type { MonitorCameraDto } from '../../../features/cameras/cameras.types';
+import { RootStackParamList } from '../../types';
 import { useAppDispatch, useAppSelector } from '../../../store/hooks';
 import CameraStreamCard from './CameraStreamCard';
 import CameraStreamSkeleton from './CameraStreamSkeleton';
+import { cameraIsLive, cameraSubtitle, pickStreamUrl } from './cameraStreamUtils';
 
 const SKELETON_COUNT = 5;
-
-function cameraSubtitle(cam: MonitorCameraDto): string {
-  const parts = [cam.siteName, cam.zoneName].filter(Boolean);
-  return parts.join(' · ') || cam.ip || '';
-}
-
-function cameraIsLive(cam: MonitorCameraDto): boolean {
-  if (typeof cam.cameraOnline === 'boolean') return cam.cameraOnline;
-  return (cam.status ?? '').toUpperCase() === 'LIVE';
-}
-
-/** Prefer WebRTC viewer page, then HLS, then generic stream URL (same idea as web CameraStream). */
-function pickStreamUrl(cam: MonitorCameraDto): string | null {
-  const candidates = [cam.mediaMtxWebRtcUrl, cam.hlsUrl, cam.streamUrl];
-  for (const c of candidates) {
-    const s = typeof c === 'string' ? c.trim() : '';
-    if (s) return s;
-  }
-  return null;
-}
 
 export type LiveCameraContentProps = {
   /** Fetch + render streams only while the Live tab is visible. */
@@ -39,6 +23,7 @@ export type LiveCameraContentProps = {
 
 export default function LiveCameraContent({ isActive, reloadKey, loadMoreKey }: Readonly<LiveCameraContentProps>) {
   const dispatch = useAppDispatch();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const selectedSiteId = useAppSelector((s) => s.sites.selectedSiteId);
   const { items, status, error, pageNumber, hasNext, isLoadingMore } = useAppSelector((s) => s.cameras);
 
@@ -73,11 +58,20 @@ export default function LiveCameraContent({ isActive, reloadKey, loadMoreKey }: 
   const loading = status === 'loading';
   const showSkeletonList = loading && items.length === 0;
 
+  const openCameraDetails = (cam: MonitorCameraDto) => {
+    navigation.navigate('CameraDetails', { camera: cam });
+  };
+
   return (
     <VStack pt="$2" space="sm">
       <Text color="$white" fontSize={28} fontWeight="$bold" mb="$2">
         Live cameras
       </Text>
+      {error ? (
+        <Text color="#ef4444" fontSize={13} mb="$2">
+          {error}
+        </Text>
+      ) : null}
       <Box>
         {showSkeletonList
           ? Array.from({ length: SKELETON_COUNT }).map((_, i) => <CameraStreamSkeleton key={`sk-${i}`} />)
@@ -92,6 +86,7 @@ export default function LiveCameraContent({ isActive, reloadKey, loadMoreKey }: 
                 isLive={cameraIsLive(cam)}
                 streamUrl={pickStreamUrl(cam)}
                 isStreamActive={isActive}
+                onPress={() => openCameraDetails(cam)}
               />
             ))
           : null}

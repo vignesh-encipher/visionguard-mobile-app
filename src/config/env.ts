@@ -2,7 +2,7 @@
  * Expo inlines only `EXPO_PUBLIC_*` at bundle time.
  * Falls back to `NEXT_PUBLIC_PORTAL_BASE_URL` if your .env still uses that name.
  */
-const DEFAULT_API_BASE_URL = 'http://34.231.171.179:11080';
+const DEFAULT_API_BASE_URL = 'http://192.168.1.130:9876';
 
 function stripQuotes(s: string): string {
   return s.replace(/^["'\s]+|["'\s]+$/g, '').trim();

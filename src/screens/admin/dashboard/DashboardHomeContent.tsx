@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { LayoutChangeEvent, StyleSheet, View } from 'react-native';
 import Svg, { Defs, Line, LinearGradient, Path, Stop, Text as SvgText } from 'react-native-svg';
 import { apiClient } from '../../../services/api/client';
+import { getDashboardDayRangeUtc } from '../../../utils/dashboardDateRange';
 import { getApiErrorMessage } from '../../../utils/apiError';
 import { getAuthToken, getOrganizationId } from '../../../utils/storage';
 
@@ -423,8 +424,6 @@ function PeakAlertsChart({ values }: Readonly<{ values: number[] }>) {
 }
 
 const DASHBOARD_SITE_ID = '';
-const DASHBOARD_START_TIME = '2026-03-03T18:30:00.000Z';
-const DASHBOARD_END_TIME = '2026-05-15T18:29:59.999Z';
 
 type ApiEnvelope<T> = {
   status?: string;
@@ -514,12 +513,14 @@ export default function DashboardHomeContent({ isActive, reloadKey }: Readonly<D
           return;
         }
 
+        const { startTime, endTime } = getDashboardDayRangeUtc();
+
         if (__DEV__) {
           console.log('[dashboard] GET /dashboard/sites', {
             orgId,
             siteId: DASHBOARD_SITE_ID,
-            startTime: DASHBOARD_START_TIME,
-            endTime: DASHBOARD_END_TIME,
+            startTime,
+            endTime,
           });
         }
 
@@ -529,8 +530,8 @@ export default function DashboardHomeContent({ isActive, reloadKey }: Readonly<D
             params: {
               orgId,
               siteId: DASHBOARD_SITE_ID,
-              startTime: DASHBOARD_START_TIME,
-              endTime: DASHBOARD_END_TIME,
+              startTime,
+              endTime,
             },
           },
         );

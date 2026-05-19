@@ -8,6 +8,7 @@ import { BaseToast, ErrorToast, ToastConfig } from 'react-native-toast-message';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import AlertDetailsScreen from './screens/admin/alerts/AlertDetailsScreen';
+import CameraDetailsScreen from './screens/admin/livecamera/CameraDetailsScreen';
 import RehydrateAuth from './providers/RehydrateAuth';
 import Profile from './screens/admin/profile/Profile';
 import DashboardScreen from './screens/admin/dashboard/DashboardScreen';
@@ -63,6 +64,7 @@ export default function App() {
               <Stack.Screen name="Dashboard" component={DashboardScreen} />
               <Stack.Screen name="Profile" component={Profile} />
               <Stack.Screen name="AlertDetails" component={AlertDetailsScreen} />
+              <Stack.Screen name="CameraDetails" component={CameraDetailsScreen} />
             </Stack.Navigator>
           </NavigationContainer>
           <Toast config={toastConfig} />
