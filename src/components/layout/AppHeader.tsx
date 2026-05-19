@@ -34,20 +34,25 @@ export type AppHeaderProps = {
   onPressAdd?: () => void;
   onPressShare?: () => void;
   onPressProfile?: () => void;
+  onPressNotifications?: () => void;
   onMenuProfile?: () => void;
   onMenuLogout?: () => void;
   profileMenuHighlightProfile?: boolean;
   notificationCount?: number;
+  /** Hide bell icon (e.g. on notifications screen). Default true. */
+  showNotifications?: boolean;
 };
 
 type AnchorRect = { x: number; y: number; width: number; height: number };
 
 export default function AppHeader({
   onPressProfile,
+  onPressNotifications,
   onMenuProfile,
   onMenuLogout,
   profileMenuHighlightProfile,
-  notificationCount = 10,
+  notificationCount = 0,
+  showNotifications = true,
 }: AppHeaderProps) {
   const insets = useSafeAreaInsets();
   const dispatch = useAppDispatch();
@@ -166,31 +171,36 @@ export default function AppHeader({
         </View>
 
         <HStack space="xs" alignItems="center" justifyContent="center" flexShrink={0} alignSelf="center">
-          <Pressable
-            w={ACTION_HIT}
-            h={ACTION_HIT}
-            alignItems="center"
-            justifyContent="center"
-            alignSelf="center"
-          >
-            <Ionicons name="notifications-outline" size={22} color="#e2e8f0" />
-            <Box
-              position="absolute"
-              top={4}
-              right={4}
-              bg="#ef4444"
-              minWidth={18}
-              h={18}
-              borderRadius={9}
+          {showNotifications ? (
+            <Pressable
+              w={ACTION_HIT}
+              h={ACTION_HIT}
               alignItems="center"
               justifyContent="center"
-              px="$1"
+              alignSelf="center"
+              onPress={onPressNotifications}
             >
-              <Text color="$white" fontSize={10} fontWeight="$bold">
-                {notificationCount > 99 ? '99+' : notificationCount}
-              </Text>
-            </Box>
-          </Pressable>
+              <Ionicons name="notifications-outline" size={22} color="#e2e8f0" />
+              {notificationCount > 0 ? (
+                <Box
+                  position="absolute"
+                  top={4}
+                  right={4}
+                  bg="#ef4444"
+                  minWidth={18}
+                  h={18}
+                  borderRadius={9}
+                  alignItems="center"
+                  justifyContent="center"
+                  px="$1"
+                >
+                  <Text color="$white" fontSize={10} fontWeight="$bold">
+                    {notificationCount > 99 ? '99+' : notificationCount}
+                  </Text>
+                </Box>
+              ) : null}
+            </Pressable>
+          ) : null}
 
           <View ref={profileAnchorRef} collapsable={false}>
             <Pressable

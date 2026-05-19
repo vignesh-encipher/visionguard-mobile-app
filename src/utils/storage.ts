@@ -80,6 +80,11 @@ export async function getOrganizationId(): Promise<string | null> {
   return id?.trim() || null;
 }
 
+export async function getUserId(): Promise<string | null> {
+  const id = await AsyncStorage.getItem(SESSION_KEYS.userId);
+  return id?.trim() || null;
+}
+
 /** Clears all locally persisted app storage on logout. */
 export async function clearAuthStorage(): Promise<void> {
   await AsyncStorage.clear();

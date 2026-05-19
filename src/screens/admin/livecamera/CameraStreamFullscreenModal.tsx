@@ -109,7 +109,7 @@ export default function CameraStreamFullscreenModal({
     >
       <View style={styles.root}>
         <View style={styles.streamLayer}>
-          <CameraStreamMedia streamUrl={streamUrl} isActive={visible} />
+          <CameraStreamMedia streamUrl={streamUrl} isActive={visible} resizeMode="contain" />
         </View>
 
         <HStack

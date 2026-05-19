@@ -30,14 +30,16 @@ function sameDocumentUrl(a: string, b: string) {
 /** RN Web’s WebView shim is unreliable for LAN MediaMTX pages; use a real iframe (same as desktop Chrome). */
 function WebStreamIframe({
   streamUrl,
+  cover,
   onLoad,
   onError,
 }: Readonly<{
   streamUrl: string;
+  cover?: boolean;
   onLoad: () => void;
   onError: () => void;
 }>) {
-  return createElement('iframe', {
+  const iframe = createElement('iframe', {
     src: streamUrl,
     title: 'Camera stream',
     allow: 'autoplay; fullscreen; encrypted-media; picture-in-picture',
@@ -57,6 +59,36 @@ function WebStreamIframe({
     onLoad,
     onError,
   });
+
+  if (!cover) return iframe;
+
+  return createElement(
+    'div',
+    {
+      style: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        overflow: 'hidden',
+      },
+    },
+    createElement(
+      'div',
+      {
+        style: {
+          position: 'absolute',
+          top: '50%',
+          left: '50%',
+          width: '100%',
+          height: '100%',
+          transform: `translate(-50%, -50%) scale(${EMBED_COVER_SCALE})`,
+        },
+      },
+      iframe,
+    ),
+  );
 }
 
 export type StreamStatus = 'loading' | 'playing' | 'paused' | 'error' | 'retrying';
@@ -67,11 +99,16 @@ export type CameraStreamMediaProps = {
   playing?: boolean;
   muted?: boolean;
   isActive?: boolean;
+  /** Fill the card and crop edges (live list). Default cover. */
+  resizeMode?: 'cover' | 'contain';
   retryAttempts?: number;
   retryInterval?: number;
   onLoaded?: () => void;
   onError?: (message: string) => void;
 };
+
+/** Scale embed/WebView so 16:9 stream fills a 16:9 box without inner letterboxing when possible. */
+const EMBED_COVER_SCALE = 1.08;
 
 export default function CameraStreamMedia({
   streamUrl,
@@ -79,11 +116,17 @@ export default function CameraStreamMedia({
   playing,
   muted = true,
   isActive = true,
+  resizeMode = 'cover',
   retryAttempts = 3,
   retryInterval = 5000,
   onLoaded,
   onError,
 }: Readonly<CameraStreamMediaProps>) {
+  const videoResize =
+    resizeMode === 'cover' ? ResizeMode.COVER : ResizeMode.CONTAIN;
+  const imageResize = resizeMode === 'cover' ? 'cover' : 'contain';
+  const embedMediaStyle =
+    resizeMode === 'cover' ? [styles.fill, styles.embedCover] : styles.fill;
   const resolvedPlaying = playing ?? autoPlay;
   const streamType: StreamType = useMemo(() => detectStreamType(streamUrl), [streamUrl]);
 
@@ -161,17 +204,18 @@ export default function CameraStreamMedia({
         );
       }
       return (
-        <View key={`embed-${mediaKey}`} style={styles.fill} collapsable={false}>
+        <View key={`embed-${mediaKey}`} style={styles.embedShell} collapsable={false}>
           {Platform.OS === 'web' ? (
             <WebStreamIframe
               streamUrl={streamUrl}
+              cover={resizeMode === 'cover'}
               onLoad={handleLoaded}
               onError={handleFatalError}
             />
           ) : (
             <WebView
               source={{ uri: streamUrl }}
-              style={styles.fill}
+              style={embedMediaStyle}
               userAgent={WEBVIEW_USER_AGENT}
               allowsInlineMediaPlayback
               mediaPlaybackRequiresUserAction={false}
@@ -206,7 +250,7 @@ export default function CameraStreamMedia({
           key={`img-${mediaKey}`}
           source={{ uri: streamUrl }}
           style={styles.fill}
-          resizeMode="cover"
+          resizeMode={imageResize}
           onLoad={handleLoaded}
           onError={handleFatalError}
         />
@@ -218,7 +262,7 @@ export default function CameraStreamMedia({
         key={`vid-${mediaKey}`}
         source={{ uri: streamUrl }}
         style={styles.fill}
-        resizeMode={ResizeMode.CONTAIN}
+        resizeMode={videoResize}
         shouldPlay={resolvedPlaying && isActive}
         isLooping={streamType === 'hls'}
         isMuted={muted}
@@ -271,7 +315,19 @@ export default function CameraStreamMedia({
 const styles = StyleSheet.create({
   wrap: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#000',
+    backgroundColor: '#0a1220',
+    overflow: 'hidden',
+  },
+  embedShell: {
+    ...StyleSheet.absoluteFillObject,
+    overflow: 'hidden',
+    backgroundColor: '#0a1220',
+  },
+  embedCover: {
+    flex: 1,
+    width: '100%',
+    height: '100%',
+    transform: [{ scale: EMBED_COVER_SCALE }],
   },
   fill: {
     flex: 1,

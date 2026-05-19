@@ -2,11 +2,16 @@ import { CommonActions, useFocusEffect } from '@react-navigation/native';
 import { clearAlerts } from '../../../features/alerts/alertsSlice';
 import { logout } from '../../../features/auth/authSlice';
 import { clearCameras } from '../../../features/cameras/camerasSlice';
+import {
+  clearNotifications,
+  fetchNotifications,
+  NOTIFICATIONS_PAGE_SIZE,
+} from '../../../features/notifications/notificationsSlice';
 import { clearSites } from '../../../features/sites/sitesSlice';
-import { useAppDispatch } from '../../../store/hooks';
+import { useAppDispatch, useAppSelector } from '../../../store/hooks';
 import { Box, Text } from '@gluestack-ui/themed';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { AppTabId } from '../../../components/layout/AppFooter';
 import AppShell from '../../../components/layout/AppShell';
 import { RootStackParamList } from '../../types';
@@ -34,6 +39,14 @@ export default function DashboardScreen({ navigation, route }: Readonly<Props>) 
   const [camerasLoadMoreKey, setCamerasLoadMoreKey] = useState(0);
   const lastEndReachedMsRef = useRef(0);
   const email = route.params.email;
+  const notificationItems = useAppSelector((s) => s.notifications.items);
+  const unreadNotificationCount = notificationItems.filter((n) => !n.read).length;
+
+  useEffect(() => {
+    void dispatch(
+      fetchNotifications({ pageNo: 0, pageSize: NOTIFICATIONS_PAGE_SIZE, append: false }),
+    );
+  }, [dispatch]);
 
   useFocusEffect(
     useCallback(() => {
@@ -81,10 +94,13 @@ export default function DashboardScreen({ navigation, route }: Readonly<Props>) 
         setActiveTab(tab);
       }}
       headerProps={{
+        onPressNotifications: () => navigation.navigate('Notifications'),
+        notificationCount: unreadNotificationCount,
         onMenuProfile: () => navigation.navigate('Profile', { email }),
         onMenuLogout: () => {
           dispatch(clearAlerts());
           dispatch(clearCameras());
+          dispatch(clearNotifications());
           dispatch(clearSites());
           dispatch(logout());
           navigation.dispatch(CommonActions.reset({ index: 0, routes: [{ name: 'Login' }] }));

@@ -108,27 +108,21 @@ export default function CameraStreamCard({
               )}
             </Box>
 
-            <Box
-              position="absolute"
-              bottom={0}
-              left={0}
-              right={0}
-              px="$3"
-              py="$3"
-              bg="rgba(5,10,20,0.88)"
-              borderTopWidth={1}
-              borderTopColor="rgba(30,41,59,0.9)"
-              zIndex={3}
+            <LinearGradient
+              colors={['transparent', 'rgba(0,0,0,0.35)', 'rgba(0,0,0,0.65)']}
+              locations={[0, 0.45, 1]}
+              style={styles.bottomOverlay}
+              pointerEvents="none"
             >
-              <Text color="$white" fontWeight="$semibold" fontSize={15} numberOfLines={1}>
+              <Text color="$white" fontWeight="$semibold" fontSize={15} numberOfLines={1} style={styles.overlayText}>
                 {title}
               </Text>
               {subtitle ? (
-                <Text color="#94a3b8" fontSize={12} mt="$1" numberOfLines={1}>
+                <Text color="#e2e8f0" fontSize={12} mt="$1" numberOfLines={1} style={styles.overlayText}>
                   {subtitle}
                 </Text>
               ) : null}
-            </Box>
+            </LinearGradient>
           </Box>
         </Box>
       </Pressable>
@@ -146,8 +140,24 @@ const styles = StyleSheet.create({
   ratioBox: {
     width: '100%',
     aspectRatio: 16 / 9,
-    backgroundColor: '#050a14',
+    backgroundColor: '#0a1220',
     position: 'relative',
+    overflow: 'hidden',
+  },
+  bottomOverlay: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    paddingHorizontal: 12,
+    paddingTop: 28,
+    paddingBottom: 12,
+    zIndex: 3,
+  },
+  overlayText: {
+    textShadowColor: 'rgba(0,0,0,0.85)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
   },
   fullscreenPlaceholder: {
     ...StyleSheet.absoluteFillObject,

@@ -32,6 +32,13 @@ export function detectStreamType(url: string): StreamType {
     return 'unknown';
   }
 
+  if (trimmed.startsWith('blob:') || trimmed.startsWith('file:')) {
+    if (u.endsWith('.mp4') || u.endsWith('.webm') || u.endsWith('.mov') || u.endsWith('.mkv')) {
+      return 'video';
+    }
+    return 'video';
+  }
+
   if (trimmed.startsWith('http')) {
     const portMatch = trimmed.match(/https?:\/\/[^/:]+:(\d+)/i);
     const port = portMatch ? Number(portMatch[1]) : null;

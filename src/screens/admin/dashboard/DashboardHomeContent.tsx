@@ -26,7 +26,7 @@ const SKEL_PRIMARY = 'rgba(148, 163, 184, 0.22)';
 const SKEL_SECONDARY = 'rgba(71, 85, 105, 0.35)';
 const SKEL_TERTIARY = 'rgba(100, 116, 139, 0.3)';
 
-const PEAK_LABELS = ['18:00', '15:00', '12:00', '09:00', '06:00', '03:00', '00:00', '21:00'] as const;
+const PEAK_CHART_MAX_X_LABELS = 7;
 const DETECTED_ROW_TINTS = [
   'rgba(33, 150, 243, 0.12)',
   'rgba(156, 39, 176, 0.12)',
@@ -57,6 +57,40 @@ function formatInt(n: number): string {
 function formatPct(n: number, digits = 2): string {
   if (!Number.isFinite(n)) return '0%';
   return `${n.toFixed(digits)}%`;
+}
+
+/** `"2026-05-19 07:00"` → `"07:00"` */
+function formatTimeAlertHourLabel(hour: string): string {
+  const trimmed = hour.trim();
+  const timePart = trimmed.includes(' ') ? trimmed.split(' ').pop() ?? trimmed : trimmed;
+  return timePart.length >= 5 ? timePart.slice(0, 5) : timePart;
+}
+
+function buildTimeAlertsChartSeries(timeAlerts: DashboardTimeAlert[]): { values: number[]; labels: string[] } {
+  const sorted = [...timeAlerts].sort((a, b) => a.hour.localeCompare(b.hour));
+  return {
+    values: sorted.map((t) => (Number.isFinite(t.count) ? t.count : 0)),
+    labels: sorted.map((t) => formatTimeAlertHourLabel(t.hour)),
+  };
+}
+
+function pickChartLabelIndices(pointCount: number, maxLabels = PEAK_CHART_MAX_X_LABELS): number[] {
+  if (pointCount <= 0) return [];
+  if (pointCount <= maxLabels) {
+    return Array.from({ length: pointCount }, (_, i) => i);
+  }
+  const indices = new Set<number>([0, pointCount - 1]);
+  const step = (pointCount - 1) / (maxLabels - 1);
+  for (let i = 1; i < maxLabels - 1; i++) {
+    indices.add(Math.round(i * step));
+  }
+  return [...indices].sort((a, b) => a - b);
+}
+
+function chartYAxisMax(values: number[]): number {
+  const dataMax = values.length > 0 ? Math.max(...values) : 0;
+  if (dataMax <= 0) return 1;
+  return Math.max(10, Math.ceil(dataMax * 1.1));
 }
 
 type StatCardProps = {
@@ -239,8 +273,8 @@ function PeakAlertsCardSkeleton() {
       <Box h={200} borderRadius={12} bg="rgba(20, 27, 45, 0.55)" overflow="hidden" justifyContent="flex-end" px="$2" pb="$2">
         <SkeletonBone w="100%" h={120} borderRadius={8} mb="$2" />
         <HStack justifyContent="space-between" px="$8">
-          {PEAK_LABELS.map((label) => (
-            <Box key={label} w={28} h={8} borderRadius={4} bg={SKEL_TERTIARY} />
+          {Array.from({ length: PEAK_CHART_MAX_X_LABELS }).map((_, i) => (
+            <Box key={`peak-skel-x-${i}`} w={28} h={8} borderRadius={4} bg={SKEL_TERTIARY} />
           ))}
         </HStack>
       </Box>
@@ -324,7 +358,10 @@ function DashboardHomeSkeleton() {
   );
 }
 
-function PeakAlertsChart({ values }: Readonly<{ values: number[] }>) {
+function PeakAlertsChart({
+  values,
+  labels,
+}: Readonly<{ values: number[]; labels: string[] }>) {
   const [w, setW] = useState(280);
   const onLayout = useCallback((e: LayoutChangeEvent) => {
     const width = e.nativeEvent.layout.width;
@@ -338,9 +375,10 @@ function PeakAlertsChart({ values }: Readonly<{ values: number[] }>) {
   const padB = 32;
   const innerW = Math.max(1, w - padL - padR);
   const innerH = chartH - padT - padB;
-  const maxVal = Math.max(1000, ...values, 1);
+  const maxVal = chartYAxisMax(values);
   const yTicks = 6;
   const step = maxVal / yTicks;
+  const xLabelIndices = pickChartLabelIndices(values.length);
 
   const points = values.map((v, i) => {
     const x = padL + (i / Math.max(1, values.length - 1)) * innerW;
@@ -412,13 +450,41 @@ function PeakAlertsChart({ values }: Readonly<{ values: number[] }>) {
           );
         })}
       </Svg>
-      <View style={{ flexDirection: 'row', paddingLeft: padL, paddingRight: 4, marginTop: 4, justifyContent: 'space-between' }}>
-        {PEAK_LABELS.map((label) => (
-          <Text key={label} color={MUTED} fontSize={9} style={{ width: 32, textAlign: 'center' }}>
-            {label}
-          </Text>
-        ))}
-      </View>
+      {values.length > 0 ? (
+        <View
+          style={{
+            position: 'relative',
+            height: 18,
+            marginTop: 4,
+            marginLeft: padL,
+            marginRight: padR,
+          }}
+        >
+          {xLabelIndices.map((idx) => {
+            const xRatio = values.length > 1 ? idx / (values.length - 1) : 0;
+            return (
+              <Text
+                key={`xlab-${idx}-${labels[idx] ?? idx}`}
+                color={MUTED}
+                fontSize={9}
+                style={{
+                  position: 'absolute',
+                  left: `${xRatio * 100}%`,
+                  width: 36,
+                  marginLeft: -18,
+                  textAlign: 'center',
+                }}
+              >
+                {labels[idx] ?? ''}
+              </Text>
+            );
+          })}
+        </View>
+      ) : (
+        <Text color={MUTED} fontSize={12} textAlign="center" mt="$2">
+          No hourly alert data for this period.
+        </Text>
+      )}
     </View>
   );
 }
@@ -573,14 +639,10 @@ export default function DashboardHomeContent({ isActive, reloadKey }: Readonly<D
 
   const detectedItems = dashboardData?.dashboardAnalyticsStatsResponses ?? [];
 
-  const peakValuesFromApi = useMemo(() => {
-    const map = new Map<string, number>();
-    for (const t of dashboardData?.timeAlerts ?? []) {
-      map.set(t.hour, t.count);
-    }
-    // Matches `PEAK_LABELS` order used by `PeakAlertsChart`.
-    return ['18:00', '15:00', '12:00', '09:00', '06:00', '03:00', '00:00', '21:00'].map((h) => map.get(h) ?? 0);
-  }, [dashboardData]);
+  const peakChartSeries = useMemo(
+    () => buildTimeAlertsChartSeries(dashboardData?.timeAlerts ?? []),
+    [dashboardData],
+  );
 
   const zoneWiseRows = useMemo(() => {
     return (dashboardData?.dashboardZoneCountResponse ?? []).slice(0, 4).map((r) => ({
@@ -684,8 +746,8 @@ export default function DashboardHomeContent({ isActive, reloadKey }: Readonly<D
       </Box>
 
       <Box bg={CARD} borderRadius={16} borderWidth={1} borderColor={CARD_BORDER} px="$4" py="$4">
-        <SectionHeader title="Peak Alerts" subtitle="Live view of visitor volume throughout the day" />
-        <PeakAlertsChart values={peakValuesFromApi} />
+        <SectionHeader title="Peak Alerts" subtitle="Hourly alert volume for the selected period" />
+        <PeakAlertsChart values={peakChartSeries.values} labels={peakChartSeries.labels} />
       </Box>
 
       <Box bg={CARD} borderRadius={20} borderWidth={1} borderColor={CARD_BORDER} px="$4" py="$4">

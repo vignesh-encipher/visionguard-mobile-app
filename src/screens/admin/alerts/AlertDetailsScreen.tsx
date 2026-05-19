@@ -1,12 +1,23 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Box, HStack, Pressable, ScrollView, Text, VStack } from '@gluestack-ui/themed';
+import { Box, HStack, Pressable, ScrollView, Spinner, Text, VStack } from '@gluestack-ui/themed';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { StyleSheet, View } from 'react-native';
+import { AlertThumbnail } from '../../../features/alerts/AlertThumbnail';
+import { getAlertFrameUri } from '../../../features/alerts/alertMedia';
 import { fetchAlertById } from '../../../features/alerts/alertsSlice';
+import type { AlertDto } from '../../../features/alerts/alerts.types';
+import {
+  getAnalyticsBarDetails,
+  releaseRecordingPlayback,
+  type RecordingPlayback,
+} from '../../../features/recording/recordingApi';
+import { getRecordingEpochRange } from '../../../features/recording/recordingEpoch';
 import { RootStackParamList } from '../../types';
 import type { AlertTimelineItem } from '../../../features/alerts/alerts.types';
 import AppHeader, { APP_HORIZONTAL_PADDING } from '../../../components/layout/AppHeader';
 import { useAppDispatch, useAppSelector } from '../../../store/hooks';
+import { RecordingVideoPlayer } from '../../../features/recording/RecordingVideoPlayer';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'AlertDetails'>;
 
@@ -14,7 +25,7 @@ const BG = '#050a14';
 const CARD = '#081a36';
 const CARD_BORDER = 'rgba(56, 189, 248, 0.25)';
 const MUTED = '#8aa0bd';
-const ACCENT = '#3b82f6';
+const PANEL = '#141b2d';
 
 function asLabel(value?: string | null): string {
   return value && value.trim().length > 0 ? value : '-';
@@ -82,6 +93,212 @@ function TimelineRow({ item, isLast }: Readonly<{ item: AlertTimelineItem; isLas
   );
 }
 
+function MediaPlaceholder({
+  icon,
+  title,
+  subtitle,
+}: Readonly<{ icon: keyof typeof Ionicons.glyphMap; title: string; subtitle?: string }>) {
+  return (
+    <Box flex={1} alignItems="center" justifyContent="center" bg="rgba(30, 41, 59, 0.45)">
+      <Ionicons name={icon} size={40} color={MUTED} />
+      <Text color="#e2e8f0" fontSize={12} fontWeight="$bold" mt="$3">
+        {title}
+      </Text>
+      {subtitle ? (
+        <Text color={MUTED} fontSize={12} mt="$1" textAlign="center" px="$4">
+          {subtitle}
+        </Text>
+      ) : null}
+    </Box>
+  );
+}
+
+function EventIncidentImage({ alert }: Readonly<{ alert: AlertDto }>) {
+  const hasImage = Boolean(getAlertFrameUri(alert));
+
+  return (
+    <Box bg={CARD} borderRadius="$2xl" borderWidth={1} borderColor={CARD_BORDER} overflow="hidden">
+      <Box px="$4" py="$3" borderBottomWidth={1} borderBottomColor={CARD_BORDER}>
+        <Text color="#fff" fontSize={16} fontWeight="$bold">
+          Event Incident Image
+        </Text>
+      </Box>
+      <View style={styles.mediaBox}>
+        {hasImage ? (
+          <AlertThumbnail alert={alert} preferFrame fill iconSize={40} />
+        ) : (
+          <MediaPlaceholder icon="image-outline" title="No incident image available" />
+        )}
+      </View>
+    </Box>
+  );
+}
+
+type RecordingPhase = 'loading' | 'ready' | 'empty' | 'error';
+
+function ViolationRecording({ alert }: Readonly<{ alert: AlertDto }>) {
+  const [playback, setPlayback] = useState<RecordingPlayback | null>(null);
+  const [phase, setPhase] = useState<RecordingPhase>('loading');
+  const violationAt = formatDate(alert.receivedAt);
+
+  const loadRecording = useCallback(async () => {
+    setPhase('loading');
+    setPlayback((prev) => {
+      releaseRecordingPlayback(prev);
+      return null;
+    });
+
+    if (!alert.cameraId) {
+      setPhase('empty');
+      return;
+    }
+
+    const range = getRecordingEpochRange(alert);
+    if (!range) {
+      setPhase('empty');
+      return;
+    }
+
+    try {
+      const next = await getAnalyticsBarDetails({
+        cameraId: alert.cameraId,
+        startTime: range.startTime,
+        endTime: range.endTime,
+        modelType: alert.modelType,
+      });
+      if (!next) {
+        setPhase('empty');
+        return;
+      }
+      setPlayback(next);
+      setPhase('ready');
+    } catch {
+      setPhase('error');
+    }
+  }, [
+    alert.cameraId,
+    alert.endEpochTime,
+    alert.modelType,
+    alert.receivedAt,
+    alert.startEpochTime,
+  ]);
+
+  useEffect(() => {
+    void loadRecording();
+    return () => {
+      setPlayback((prev) => {
+        releaseRecordingPlayback(prev);
+        return null;
+      });
+    };
+  }, [loadRecording]);
+
+  const renderVideoBody = () => {
+    if (phase === 'loading') {
+      return (
+        <Box flex={1} alignItems="center" justifyContent="center" bg="rgba(30, 41, 59, 0.45)">
+          <Spinner size="large" color="#38bdf8" />
+          <Text color="#e2e8f0" fontSize={12} fontWeight="$bold" mt="$3">
+            Loading recording…
+          </Text>
+        </Box>
+      );
+    }
+
+    if (phase === 'ready' && playback?.uri) {
+      return <RecordingVideoPlayer uri={playback.uri} />;
+    }
+
+    if (phase === 'error') {
+      return (
+        <Box flex={1} alignItems="center" justifyContent="center" bg="rgba(30, 41, 59, 0.45)" px="$4">
+          <Ionicons name="alert-circle-outline" size={40} color={MUTED} />
+          <Text color="#e2e8f0" fontSize={12} fontWeight="$bold" mt="$3" textAlign="center">
+            Failed to load recording
+          </Text>
+          <Pressable onPress={() => void loadRecording()} mt="$3" px="$4" py="$2" borderRadius="$lg" bg="#38bdf8">
+            <Text color="#0f172a" fontSize={12} fontWeight="$bold">
+              Retry
+            </Text>
+          </Pressable>
+        </Box>
+      );
+    }
+
+    return (
+      <MediaPlaceholder
+        icon="videocam-off-outline"
+        title="No video record found"
+        subtitle={`Violation time: ${violationAt}`}
+      />
+    );
+  };
+
+  return (
+    <Box bg={CARD} borderRadius="$2xl" borderWidth={1} borderColor={CARD_BORDER} overflow="hidden">
+      <Box px="$4" py="$3" borderBottomWidth={1} borderBottomColor={CARD_BORDER}>
+        <Text color="#fff" fontSize={16} fontWeight="$bold">
+          Violation Recording
+        </Text>
+      </Box>
+      <View style={styles.mediaBox}>{renderVideoBody()}</View>
+      <Box bg={PANEL} px="$4" py="$3" borderTopWidth={1} borderTopColor={CARD_BORDER}>
+        <HStack space="sm">
+          <Pressable
+            flex={1}
+            borderRadius="$lg"
+            borderWidth={1}
+            borderColor="rgba(239, 68, 68, 0.5)"
+            py="$3"
+            alignItems="center"
+            bg="rgba(127, 29, 29, 0.2)"
+          >
+            <Text color="#ef4444" fontSize={12} fontWeight="$bold">
+              Denied
+            </Text>
+          </Pressable>
+          <Pressable
+            flex={1}
+            borderRadius="$lg"
+            borderWidth={1}
+            borderColor="rgba(234, 179, 8, 0.5)"
+            py="$3"
+            alignItems="center"
+            bg="rgba(113, 63, 18, 0.2)"
+          >
+            <Text color="#eab308" fontSize={12} fontWeight="$bold">
+              Agree & Pick
+            </Text>
+          </Pressable>
+        </HStack>
+      </Box>
+    </Box>
+  );
+}
+
+function MediaCardsSkeleton() {
+  return (
+    <>
+      <Box bg={CARD} borderRadius="$2xl" borderWidth={1} borderColor={CARD_BORDER} overflow="hidden">
+        <Box px="$4" py="$3">
+          <Box h={16} w="55%" bg="rgba(148, 163, 184, 0.22)" borderRadius="$full" />
+        </Box>
+        <Box style={styles.mediaBox} bg="rgba(30, 41, 59, 0.45)" alignItems="center" justifyContent="center">
+          <Box w={60} h={60} borderRadius="$full" bg="rgba(59, 130, 246, 0.2)" />
+        </Box>
+      </Box>
+      <Box bg={CARD} borderRadius="$2xl" borderWidth={1} borderColor={CARD_BORDER} overflow="hidden">
+        <Box px="$4" py="$3">
+          <Box h={16} w="48%" bg="rgba(148, 163, 184, 0.22)" borderRadius="$full" />
+        </Box>
+        <Box style={styles.mediaBox} bg="rgba(30, 41, 59, 0.45)" alignItems="center" justifyContent="center">
+          <Box w={60} h={60} borderRadius="$full" bg="rgba(37, 99, 235, 0.35)" />
+        </Box>
+      </Box>
+    </>
+  );
+}
+
 function AlertDetailsSkeleton() {
   return (
     <VStack space="md">
@@ -93,6 +310,7 @@ function AlertDetailsSkeleton() {
         <Box h={12} w="72%" bg="rgba(100, 116, 139, 0.25)" borderRadius="$full" mb="$2" />
         <Box h={12} w="52%" bg="rgba(100, 116, 139, 0.25)" borderRadius="$full" />
       </Box>
+
 
       <Box bg={CARD} borderRadius="$2xl" borderWidth={1} borderColor={CARD_BORDER} px="$4" py="$4">
         <Box h={16} w="48%" bg="rgba(148, 163, 184, 0.22)" borderRadius="$full" mb="$4" />
@@ -118,26 +336,8 @@ function AlertDetailsSkeleton() {
         </HStack>
       </Box>
 
-      <Box bg={CARD} borderRadius="$2xl" borderWidth={1} borderColor={CARD_BORDER} px="$4" py="$4">
-        <Box h={16} w="45%" bg="rgba(148, 163, 184, 0.22)" borderRadius="$full" mb="$3" />
-        <Box
-          borderRadius="$xl"
-          borderWidth={1}
-          borderColor="rgba(100, 116, 139, 0.35)"
-          px="$4"
-          py="$8"
-          alignItems="center"
-          bg="rgba(30, 41, 59, 0.45)"
-        >
-          <Box w={60} h={60} borderRadius="$full" bg="rgba(59, 130, 246, 0.2)" mb="$3" />
-          <Box h={12} w="45%" bg="rgba(148, 163, 184, 0.22)" borderRadius="$full" mb="$2" />
-          <Box h={10} w="55%" bg="rgba(100, 116, 139, 0.25)" borderRadius="$full" />
-        </Box>
-        <HStack mt="$4" space="sm">
-          <Box flex={1} h={42} borderRadius="$lg" borderWidth={1} borderColor="rgba(239, 68, 68, 0.5)" />
-          <Box flex={1} h={42} borderRadius="$lg" borderWidth={1} borderColor="rgba(234, 179, 8, 0.5)" />
-        </HStack>
-      </Box>
+            <MediaCardsSkeleton />
+
 
       <Box bg={CARD} borderRadius="$2xl" borderWidth={1} borderColor={CARD_BORDER} px="$4" py="$4">
         <Box h={16} w="40%" bg="rgba(148, 163, 184, 0.22)" borderRadius="$full" mb="$4" />
@@ -161,7 +361,7 @@ function AlertDetailsSkeleton() {
 
 export default function AlertDetailsScreen({ navigation, route }: Readonly<Props>) {
   const dispatch = useAppDispatch();
-  const { alertId } = route.params;
+  const { alertId, returnTo, cameraId } = route.params;
   const detailItem = useAppSelector((s) => s.alerts.detailItem);
   const detailStatus = useAppSelector((s) => s.alerts.detailStatus);
   const detailError = useAppSelector((s) => s.alerts.detailError);
@@ -170,9 +370,25 @@ export default function AlertDetailsScreen({ navigation, route }: Readonly<Props
   const fallbackEmail = useAppSelector(
     (s) => s.auth.userEmail ?? s.auth.user?.email ?? s.auth.user?.username ?? '',
   );
-  const handleBack = () => {
-    navigation.navigate('Dashboard', { email: fallbackEmail, initialTab: 'Alerts' });
+  const unreadNotificationCount = useAppSelector((s) =>
+    s.notifications.items.filter((n) => !n.read).length,
+  );
+  const headerProps = {
+    onPressNotifications: () => navigation.navigate('Notifications'),
+    notificationCount: unreadNotificationCount,
   };
+
+  const handleBack = useCallback(() => {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+      return;
+    }
+    if (returnTo === 'camera' && cameraId) {
+      navigation.navigate('CameraDetails', { cameraId });
+      return;
+    }
+    navigation.navigate('Dashboard', { email: fallbackEmail, initialTab: 'Alerts' });
+  }, [navigation, returnTo, cameraId, fallbackEmail]);
 
   useEffect(() => {
     void dispatch(fetchAlertById({ alertId }));
@@ -181,7 +397,7 @@ export default function AlertDetailsScreen({ navigation, route }: Readonly<Props
   if (detailStatus === 'loading') {
     return (
       <Box flex={1} bg={BG}>
-        <AppHeader />
+        <AppHeader {...headerProps} />
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 24 }}>
           <VStack px={APP_HORIZONTAL_PADDING} pt="$4" space="md">
             <Pressable
@@ -233,7 +449,7 @@ export default function AlertDetailsScreen({ navigation, route }: Readonly<Props
 
   return (
     <Box flex={1} bg={BG}>
-      <AppHeader />
+      <AppHeader {...headerProps} />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 24 }}>
         <VStack px={APP_HORIZONTAL_PADDING} pt="$4" space="md">
           <Pressable
@@ -253,6 +469,8 @@ export default function AlertDetailsScreen({ navigation, route }: Readonly<Props
               </Text>
             </HStack>
           </Pressable>
+
+       
 
           <Box bg={CARD} borderRadius="$2xl" borderWidth={1} borderColor={CARD_BORDER} px="$4" py="$4">
             <HStack justifyContent="space-between" alignItems="center">
@@ -331,59 +549,8 @@ export default function AlertDetailsScreen({ navigation, route }: Readonly<Props
             </VStack>
           </Box>
 
-          <Box bg={CARD} borderRadius="$2xl" borderWidth={1} borderColor={CARD_BORDER} px="$4" py="$4">
-            <Text color="#fff" fontSize={16} fontWeight="$bold" mb="$3">
-              Violation Recording
-            </Text>
-            <Box
-              borderRadius="$xl"
-              borderWidth={1}
-              borderColor="rgba(100, 116, 139, 0.35)"
-              px="$4"
-              py="$8"
-              alignItems="center"
-              bg="rgba(30, 41, 59, 0.45)"
-            >
-              <Box w={60} h={60} borderRadius="$full" bg="rgba(37, 99, 235, 0.35)" alignItems="center" justifyContent="center">
-                <Ionicons name="play" size={28} color="#3b82f6" />
-              </Box>
-              <Text color="#e2e8f0" fontSize={12} fontWeight="$bold" mt="$3">
-                No recording available
-              </Text>
-              <Text color={MUTED} fontSize={12} mt="$1">
-                Violation time: {violationAt}
-              </Text>
-            </Box>
-
-            <HStack mt="$4" space="sm">
-              <Pressable
-                flex={1}
-                borderRadius="$lg"
-                borderWidth={1}
-                borderColor="rgba(239, 68, 68, 0.5)"
-                py="$3"
-                alignItems="center"
-                bg="rgba(127, 29, 29, 0.2)"
-              >
-                <Text color="#ef4444" fontSize={12} fontWeight="$bold">
-                  Denied
-                </Text>
-              </Pressable>
-              <Pressable
-                flex={1}
-                borderRadius="$lg"
-                borderWidth={1}
-                borderColor="rgba(234, 179, 8, 0.5)"
-                py="$3"
-                alignItems="center"
-                bg="rgba(113, 63, 18, 0.2)"
-              >
-                <Text color="#eab308" fontSize={12} fontWeight="$bold">
-                  Agree & Pick
-                </Text>
-              </Pressable>
-            </HStack>
-          </Box>
+          <EventIncidentImage alert={alert} />
+          <ViolationRecording alert={alert} />
 
           <Box bg={CARD} borderRadius="$2xl" borderWidth={1} borderColor={CARD_BORDER} px="$4" py="$4">
             <Text color="#fff" fontSize={16} fontWeight="$bold" mb="$3">
@@ -400,3 +567,13 @@ export default function AlertDetailsScreen({ navigation, route }: Readonly<Props
     </Box>
   );
 }
+
+const styles = StyleSheet.create({
+  mediaBox: {
+    width: '100%',
+    aspectRatio: 16 / 9,
+    backgroundColor: '#0a1220',
+    overflow: 'hidden',
+    position: 'relative',
+  },
+});

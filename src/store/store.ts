@@ -2,6 +2,7 @@ import { configureStore } from '@reduxjs/toolkit';
 import alertsReducer from '../features/alerts/alertsSlice';
 import authReducer from '../features/auth/authSlice';
 import camerasReducer from '../features/cameras/camerasSlice';
+import notificationsReducer from '../features/notifications/notificationsSlice';
 import sitesReducer from '../features/sites/sitesSlice';
 
 export const store = configureStore({
@@ -10,6 +11,7 @@ export const store = configureStore({
     sites: sitesReducer,
     cameras: camerasReducer,
     alerts: alertsReducer,
+    notifications: notificationsReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

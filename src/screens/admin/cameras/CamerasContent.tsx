@@ -60,8 +60,12 @@ function cameraLabels(cam: MonitorCameraDto): string[] {
       .map((item) => {
         if (typeof item === 'string') return item.toUpperCase();
         if (item && typeof item === 'object') {
-          const modelName = (item as { modelName?: unknown }).modelName;
-          if (typeof modelName === 'string' && modelName.trim()) return modelName.trim().toUpperCase();
+          const o = item as { modelName?: unknown; modelType?: unknown };
+          const modelType =
+            (typeof o.modelType === 'string' && o.modelType.trim()) ||
+            (typeof o.modelName === 'string' && o.modelName.trim()) ||
+            '';
+          if (modelType) return modelType.toUpperCase();
         }
         return null;
       })

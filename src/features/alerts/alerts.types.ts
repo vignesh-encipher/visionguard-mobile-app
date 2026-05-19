@@ -20,6 +20,13 @@ export type AlertDto = {
   personName?: string | null;
   priority?: string | null;
   receivedAt?: string | null;
+  startEpochTime?: number | null;
+  endEpochTime?: number | null;
+  /** Base64 or data-URI snapshot from analytics API */
+  frame?: string | null;
+  thumbnail?: string | null;
+  /** Clip or stream URL when provided by analytics API */
+  event?: string | null;
   siteId?: string | null;
   siteName?: string | null;
   zoneId?: string | null;

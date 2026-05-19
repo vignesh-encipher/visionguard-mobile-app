@@ -1,3 +1,10 @@
+export type CameraModelConfig = {
+  modelType: string;
+  color?: string | null;
+  boxText?: string | null;
+  isEnabled?: boolean;
+};
+
 export type MonitorCameraDto = {
   id: string;
   name: string;
@@ -5,7 +12,7 @@ export type MonitorCameraDto = {
   siteName?: string;
   zoneId?: string;
   zoneName?: string;
-  modelConfigs?: Array<string | { modelName?: string }>;
+  modelConfigs?: Array<string | CameraModelConfig | { modelName?: string; modelType?: string }>;
   status?: string;
   active?: boolean;
   cameraOnline?: boolean;
@@ -15,6 +22,12 @@ export type MonitorCameraDto = {
   mediaMtxRtspUrl?: string | null;
   hlsUrl?: string | null;
   streamUrl?: string | null;
+  analyticStreamUrl?: string | null;
+  genericVideoFeedBroadCastUrl?: string | null;
+  defaultAnalyticsUrl?: string | null;
+  maxBitrate?: number | null;
+  compressionEnabled?: boolean | null;
+  cameraRtspPath?: string | null;
   ip?: string;
 };
 

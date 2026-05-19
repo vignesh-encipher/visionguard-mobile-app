@@ -1,5 +1,3 @@
-import type { MonitorCameraDto } from '../features/cameras/cameras.types';
-
 export type RootStackParamList = {
   Login: undefined;
   Dashboard: {
@@ -7,6 +5,12 @@ export type RootStackParamList = {
     initialTab?: 'Home' | 'Live' | 'Alerts' | 'Cameras' | 'More';
   };
   Profile: { email: string };
-  AlertDetails: { alertId: string };
-  CameraDetails: { camera: MonitorCameraDto };
+  AlertDetails: {
+    alertId: string;
+    /** Where to go if the stack cannot pop (e.g. deep link). */
+    returnTo?: 'alerts' | 'camera';
+    cameraId?: string;
+  };
+  CameraDetails: { cameraId: string };
+  Notifications: undefined;
 };

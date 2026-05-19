@@ -1,18 +1,58 @@
-import type { MonitorCameraDto } from '../../../features/cameras/cameras.types';
+import type { CameraModelConfig, MonitorCameraDto } from '../../../features/cameras/cameras.types';
+
+export type CameraStreamUrlVariant = 'default' | 'user';
+
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === 'string' && value.trim().length > 0;
+}
+
+/** Stream URL priority aligned with web `getCameraStreamUrl`. */
+export function getCameraStreamUrl(
+  response: MonitorCameraDto | null | undefined,
+  variant: CameraStreamUrlVariant = 'default',
+): string {
+  if (response == null) return '';
+
+  if (variant === 'user') {
+    if (isNonEmptyString(response.hlsUrl)) return response.hlsUrl.trim();
+    if (isNonEmptyString(response.analyticStreamUrl)) return response.analyticStreamUrl.trim();
+    if (isNonEmptyString(response.defaultAnalyticsUrl)) return response.defaultAnalyticsUrl.trim();
+    if (isNonEmptyString(response.streamUrl)) return response.streamUrl.trim();
+    if (isNonEmptyString(response.mediaMtxWebRtcUrl)) return response.mediaMtxWebRtcUrl.trim();
+    return '';
+  }
+
+  if (isNonEmptyString(response.genericVideoFeedBroadCastUrl)) {
+    return response.genericVideoFeedBroadCastUrl.trim();
+  }
+  if (isNonEmptyString(response.analyticStreamUrl)) return response.analyticStreamUrl.trim();
+  if (isNonEmptyString(response.defaultAnalyticsUrl)) return response.defaultAnalyticsUrl.trim();
+  if (isNonEmptyString(response.mediaMtxWebRtcUrl)) return response.mediaMtxWebRtcUrl.trim();
+  if (isNonEmptyString(response.streamUrl)) return response.streamUrl.trim();
+  if (isNonEmptyString(response.hlsUrl)) return response.hlsUrl.trim();
+  return '';
+}
+
+/** Live list cards — default variant (broadcast / analytics first). */
+export function pickStreamUrl(cam: MonitorCameraDto): string | null {
+  const url = getCameraStreamUrl(cam, 'default');
+  return url || null;
+}
 
 export function cameraIsLive(cam: MonitorCameraDto): boolean {
   if (typeof cam.cameraOnline === 'boolean') return cam.cameraOnline;
   return (cam.status ?? '').toUpperCase() === 'LIVE';
 }
 
-/** Prefer WebRTC viewer page, then HLS, then generic stream URL. */
-export function pickStreamUrl(cam: MonitorCameraDto): string | null {
-  const candidates = [cam.mediaMtxWebRtcUrl, cam.hlsUrl, cam.streamUrl];
-  for (const c of candidates) {
-    const s = typeof c === 'string' ? c.trim() : '';
-    if (s) return s;
-  }
-  return null;
+export function formatBitrateLabel(maxBitrate?: number | null): string {
+  if (maxBitrate == null || !Number.isFinite(maxBitrate)) return '0 Kbps';
+  return `${maxBitrate} Kbps`;
+}
+
+export function compressionLabel(compressionEnabled?: boolean | null): string {
+  if (compressionEnabled === true) return 'Enabled';
+  if (compressionEnabled === false) return 'Disabled';
+  return '---';
 }
 
 export function cameraSubtitle(cam: MonitorCameraDto): string {
@@ -20,20 +60,32 @@ export function cameraSubtitle(cam: MonitorCameraDto): string {
   return parts.join(' · ') || cam.ip || '';
 }
 
-export function extractModelKeys(cam: MonitorCameraDto): string[] {
-  if (!Array.isArray(cam.modelConfigs) || cam.modelConfigs.length === 0) {
-    return ['HELMET_DETECTION', 'VEST_DETECTION'];
-  }
+export function parseModelConfigs(cam: MonitorCameraDto): CameraModelConfig[] {
+  if (!Array.isArray(cam.modelConfigs)) return [];
+
   return cam.modelConfigs
-    .map((item) => {
-      if (typeof item === 'string') return item.trim().toUpperCase();
-      if (item && typeof item === 'object') {
-        const modelName = (item as { modelName?: unknown }).modelName;
-        if (typeof modelName === 'string' && modelName.trim()) return modelName.trim().toUpperCase();
+    .map((item): CameraModelConfig | null => {
+      if (typeof item === 'string') {
+        const modelType = item.trim().toUpperCase();
+        return modelType ? { modelType, isEnabled: true } : null;
       }
-      return null;
+      if (!item || typeof item !== 'object') return null;
+
+      const o = item as Record<string, unknown>;
+      const rawType =
+        (typeof o.modelType === 'string' && o.modelType.trim()) ||
+        (typeof o.modelName === 'string' && o.modelName.trim()) ||
+        '';
+      if (!rawType) return null;
+
+      return {
+        modelType: rawType.toUpperCase(),
+        color: typeof o.color === 'string' ? o.color : null,
+        boxText: typeof o.boxText === 'string' ? o.boxText : null,
+        isEnabled: typeof o.isEnabled === 'boolean' ? o.isEnabled : true,
+      };
     })
-    .filter((v): v is string => Boolean(v));
+    .filter((v): v is CameraModelConfig => v != null);
 }
 
 export function formatModelLabel(modelKey: string): string {

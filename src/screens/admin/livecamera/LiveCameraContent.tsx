@@ -59,7 +59,7 @@ export default function LiveCameraContent({ isActive, reloadKey, loadMoreKey }: 
   const showSkeletonList = loading && items.length === 0;
 
   const openCameraDetails = (cam: MonitorCameraDto) => {
-    navigation.navigate('CameraDetails', { camera: cam });
+    navigation.navigate('CameraDetails', { cameraId: cam.id });
   };
 
   return (

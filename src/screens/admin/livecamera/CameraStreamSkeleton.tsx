@@ -1,4 +1,5 @@
 import { Box } from '@gluestack-ui/themed';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useRef } from 'react';
 import { Animated, Easing, StyleSheet, View } from 'react-native';
 
@@ -37,11 +38,16 @@ export default function CameraStreamSkeleton() {
           <View style={styles.barShort} />
           <View style={styles.barTiny} />
         </View>
+        <LinearGradient
+          colors={['transparent', 'rgba(0,0,0,0.35)', 'rgba(0,0,0,0.65)']}
+          locations={[0, 0.45, 1]}
+          style={styles.bottomOverlay}
+          pointerEvents="none"
+        >
+          <View style={styles.titleBar} />
+          <View style={styles.subBar} />
+        </LinearGradient>
       </View>
-      <Box px="$3" py="$3" bg="rgba(5,10,20,0.88)" borderTopWidth={1} borderTopColor="rgba(30,41,59,0.9)">
-        <View style={styles.titleBar} />
-        <View style={styles.subBar} />
-      </Box>
     </Box>
   );
 }
@@ -53,6 +59,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#0a1220',
     justifyContent: 'flex-end',
     padding: 12,
+    position: 'relative',
   },
   shimmer: {
     ...StyleSheet.absoluteFillObject,
@@ -62,6 +69,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    zIndex: 1,
   },
   barShort: {
     width: '42%',
@@ -75,17 +83,26 @@ const styles = StyleSheet.create({
     borderRadius: 9,
     backgroundColor: 'rgba(148,163,184,0.2)',
   },
+  bottomOverlay: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    paddingHorizontal: 12,
+    paddingTop: 28,
+    paddingBottom: 12,
+  },
   titleBar: {
     height: 14,
     width: '55%',
     borderRadius: 6,
-    backgroundColor: 'rgba(148,163,184,0.2)',
+    backgroundColor: 'rgba(148,163,184,0.25)',
     marginBottom: 8,
   },
   subBar: {
     height: 11,
     width: '40%',
     borderRadius: 5,
-    backgroundColor: 'rgba(148,163,184,0.15)',
+    backgroundColor: 'rgba(148,163,184,0.18)',
   },
 });
